@@ -6,9 +6,82 @@ import gc
 import itertools
 from my_tools import now_str
 from operator import itemgetter
+from datetime import datetime
+import re
 
 ########################################################################
 
+EVENT = [('Etsy', 'NR', 9), ('的', 'DEG', 10), ('估值', 'NN', 11), ('已', 'AD', 12), ('突破', 'VV', 13),
+ ('6亿', 'CD', 14), ('美元', 'M', 15), ('。', 'PU', 16)]
+NON_EVENT = [('在', 'P', 1), ('2012年', 'NT', 2), ('的', 'DEG', 3), ('一', 'CD', 4), ('轮', 'M', 5), ('融资', 'NN', 6),
+ ('中', 'LC', 7), ('，', 'PU', 8)]
+
+
+cn_year = re.compile('(\d+)年')
+cn_month = re.compile('(\d+)月')
+cn_day = re.compile('(\d+)日')
+current_year = int(str(datetime.now()).split(' ')[0].split('-')[0])
+current_month = int(str(datetime.now()).split(' ')[0].split('-')[1])
+current_day = int(str(datetime.now()).split(' ')[0].split('-')[2])
+
+
+def date_detector(caluse_tuples, ref_yr=current_year, ref_month=current_month, ref_day=current_day):
+    '''
+    This function only deals with the expressions starting with explicit year.
+    '''
+    state = ''
+    for item in caluse_tuples:
+        if state == '':
+            if re.match(cn_year, item[0]):
+                matched_year = int(re.match(cn_year, item[0]).group(1))
+
+                if len(str(matched_year)) == 2:  # if the year only contains two digits
+                    m_year = matched_year
+                    min_year = m_year + 1900
+                    max_year = m_year + 2000
+                    if max_year - ref_yr > ref_yr - min_year:
+                        matched_year = m_year + 1900  # convert the year to 4 digits
+                    else:
+                        matched_year = m_year + 2000
+
+                if len(str(matched_year)) == 4:
+                    if matched_year - ref_yr < 0:
+                        state = 'PAST'
+                    elif matched_year - ref_yr > 0:
+                        state = 'FUTURE'
+                    elif matched_year - ref_yr == 0:
+                        state = 'CURRENT_YEAR'
+
+        elif state == 'CURRENT_YEAR':
+            if re.match(cn_month, item[0]):
+                matched_month = int(re.match(cn_month, item[0]).group(1))
+                if matched_month - ref_month < 0:
+                    state = 'PAST'
+                elif matched_month - ref_month > 0:
+                    state = 'FUTURE'
+                elif matched_month - ref_month == 0:
+                    state = 'CURRENT_MONTH'
+            else:
+                state = 'CURRENT'
+
+        elif state == 'CURRENT_MONTH':
+            if re.match(cn_month, item[0]):
+                matched_day = int(re.match(cn_day, item[0]).group(1))
+                if matched_day - ref_day < 0:
+                    state = 'PAST'
+                elif matched_day - ref_day > 0:
+                    state = 'FUTURE'
+                elif matched_day - ref_day == 0:
+                    state = 'CURRENT'
+            else:
+                state = 'CURRENT'
+
+    if state == 'PAST' or 'FUTURE' or 'CURRENT':
+        print state
+        return state
+
+
+########################################################################
 
 STF_TIME_WORDS = ['年#NT', '年#NN', '年#M', '年#AD', '年#JJ', '年内#NT',
                   '月#NT', '月#NN', '月#M', '月#CD', '月份#NN', '月份#NT', '月#AD',
@@ -71,6 +144,8 @@ FUTURE_NT = ['今后#NT', '未来#NT', '将来#NT', '后来#NT', '此后#NT', '�
              '下月初#NT', '月后#NT',
              '下周#NT',
              '明天#NT', '次日#NT', '后天#NT', '明后天#NT', '翌日#NT', '明晚#NT', '明早#NT']
+
+
 
 ########################################################################
 
@@ -135,24 +210,14 @@ CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS
 
 '苹果 于 3月 9日 公布 Apple Watch 的 定价'
 
-SEN = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'), ('代表', 'VV'), ('着', 'AS'),
-                ('2007年', 'NT'), ('苹果', 'NN'), ('推出', 'VV'), ('智能', 'NN'), ('手机', 'NN'), ('iPhone', 'NN'), ('以来', 'LC'), ('最大', 'JJ'), ('赌注', 'NN'),
-                ('，', 'PU'), ('一旦', 'CS'), ('苹果', 'NN'), ('于', 'P'), ('3月', 'NT'), ('9日', 'NT'), ('正式', 'AD'), ('公布', 'VV'), ('Apple', 'NN'),
-                ('Watch', 'NN'), ('的', 'DEG'), ('定价', 'NN'), ('等', 'ETC'), ('细节', 'NN'), ('后', 'LC'), ('，', 'PU'), ('苹果', 'NN'), ('将', 'AD'),
-                ('变成', 'VV'), ('完全', 'AD'), ('不同', 'VA'), ('的', 'DEC'), ('公司', 'NN'), ('。', 'PU')]
+SEN = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'), ('代表', 'VV'),
+       ('着', 'AS'), ('2007年', 'NT'), ('苹果', 'NN'), ('推出', 'VV'), ('智能', 'NN'), ('手机', 'NN'), ('iPhone', 'NN'), ('以来', 'LC'),
+       ('最大', 'JJ'), ('赌注', 'NN'), ('，', 'PU'), ('一旦', 'CS'), ('苹果', 'NN'), ('于', 'P'), ('3月', 'NT'), ('9日', 'NT'),
+       ('正式', 'AD'), ('公布', 'VV'), ('Apple', 'NN'), ('Watch', 'NN'), ('的', 'DEG'), ('定价', 'NN'), ('等', 'ETC'), ('细节', 'NN'),
+       ('后', 'LC'), ('，', 'PU'), ('苹果', 'NN'), ('将', 'AD'), ('变成', 'VV'), ('完全', 'AD'), ('不同', 'VA'), ('的', 'DEC'),
+       ('公司', 'NN'), ('。', 'PU')]
 
 INDEX = [20, 21, 22, 23, 25, 26, 27, 28, 29]
-
-'根据2014年Reuters Institute调查，在西班牙、意大利和巴西，很多WhatsApp用户通过这款应用来获取新闻资讯。'
-
-'很多 WhatsApp 用户 通 过 款 应用 获取 新闻 资讯'
-
-SEN2 = [('根据', 'P'), ('2014年', 'NT'), ('Reuters', 'NR'), ('Institute', 'NN'), ('调查', 'NN'), ('，', 'PU'), ('在', 'P'), ('西班牙', 'NR'),
-        ('、', 'PU'), ('意大利', 'NR'), ('和', 'CC'), ('巴西', 'NR'), ('，', 'PU'), ('很多', 'CD'), ('WhatsApp', 'NR'), ('用户', 'NN'), ('通过', 'P'),
-        ('这', 'DT'), ('款', 'M'), ('应用', 'NN'), ('来', 'MSP'), ('获取', 'VV'), ('新闻', 'NN'), ('资讯', 'NN'), ('。', 'PU')]
-
-'在2012年的一轮融资中，Etsy的估值已突破6亿美元。'
-'Etsy 估值 突破 6 亿 美元1'
 
 
 def calculate_index(sen_tuple, event_index):
@@ -181,8 +246,8 @@ def calculate_index(sen_tuple, event_index):
     for i in non_event_list:
         non_event_clause.append(tuple(i.split(' ')))
 
-    print 'event clause:', ' '.join('%s#%s %s;' % (k, v, i) for k, v, i in event_clause)
-    print 'non event clause:', ' '.join('%s#%s %s;' % (k, v, i) for k, v, i in non_event_clause)
+    print 'event clause:', ' '.join('(\'%s\', \'%s\', %s),' % (k, v, i) for k, v, i in event_clause)
+    print 'non event clause:', ' '.join('(\'%s\', \'%s\', %s),' % (k, v, i) for k, v, i in non_event_clause)
 
     # for i in event_index:
     #     event_list.append([x for x in sen_tuple[i]])
@@ -316,46 +381,56 @@ if __name__ == '__main__':
     #             print j
 
 
-    SEN = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'), ('代表', 'VV'), ('着', 'AS'),
-                ('2007年', 'NT'), ('苹果', 'NN'), ('推出', 'VV'), ('智能', 'NN'), ('手机', 'NN'), ('iPhone', 'NN'), ('以来', 'LC'), ('最大', 'JJ'), ('赌注', 'NN'),
-                ('，', 'PU'), ('一旦', 'CS'), ('苹果', 'NN'), ('于', 'P'), ('3月', 'NT'), ('9日', 'NT'), ('正式', 'AD'), ('公布', 'VV'), ('Apple', 'NN'),
-                ('Watch', 'NN'), ('的', 'DEG'), ('定价', 'NN'), ('等', 'ETC'), ('细节', 'NN'), ('后', 'LC'), ('，', 'PU'), ('苹果', 'NN'), ('将', 'AD'),
-                ('变成', 'VV'), ('完全', 'AD'), ('不同', 'VA'), ('的', 'DEC'), ('公司', 'NN'), ('。', 'PU')]
+    SEN1 = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'), ('代表', 'VV'),
+       ('着', 'AS'), ('2007年', 'NT'), ('苹果', 'NN'), ('推出', 'VV'), ('智能', 'NN'), ('手机', 'NN'), ('iPhone', 'NN'), ('以来', 'LC'),
+       ('最大', 'JJ'), ('赌注', 'NN'), ('，', 'PU'), ('一旦', 'CS'), ('苹果', 'NN'), ('于', 'P'), ('3月', 'NT'), ('9日', 'NT'),
+       ('正式', 'AD'), ('公布', 'VV'), ('Apple', 'NN'), ('Watch', 'NN'), ('的', 'DEG'), ('定价', 'NN'), ('等', 'ETC'), ('细节', 'NN'),
+       ('后', 'LC'), ('，', 'PU'), ('苹果', 'NN'), ('将', 'AD'), ('变成', 'VV'), ('完全', 'AD'), ('不同', 'VA'), ('的', 'DEC'),
+       ('公司', 'NN'), ('。', 'PU')]
 
-    INDEX = [20, 21, 22, 23, 25, 26, 27, 28, 29]
+    INDEX1 = [20, 21, 22, 23, 25, 26, 27, 28, 29]
 
-    SEN2 = [('根据', 'P'), ('2014年', 'NT'), ('Reuters', 'NR'), ('Institute', 'NN'), ('调查', 'NN'), ('，', 'PU'), ('在', 'P'), ('西班牙', 'NR'),
-            ('、', 'PU'), ('意大利', 'NR'), ('和', 'CC'), ('巴西', 'NR'), ('，', 'PU'), ('很多', 'CD'), ('WhatsApp', 'NR'), ('用户', 'NN'), ('通过', 'P'),
-            ('这', 'DT'), ('款', 'M'), ('应用', 'NN'), ('来', 'MSP'), ('获取', 'VV'), ('新闻', 'NN'), ('资讯', 'NN'), ('。', 'PU')]
+    SEN2 = [('根据', 'P'), ('2014年', 'NT'), ('Reuters', 'NR'), ('Institute', 'NN'), ('调查', 'NN'), ('，', 'PU'), ('在', 'P'),
+            ('西班牙', 'NR'), ('、', 'PU'), ('意大利', 'NR'), ('和', 'CC'), ('巴西', 'NR'), ('，', 'PU'), ('很多', 'CD'), ('WhatsApp', 'NR'),
+            ('用户', 'NN'), ('通过', 'P'), ('这', 'DT'), ('款', 'M'), ('应用', 'NN'), ('来', 'MSP'), ('获取', 'VV'), ('新闻', 'NN'),
+            ('资讯', 'NN'), ('。', 'PU')]
 
     INDEX2 = [13, 14, 15, 16, 18, 19, 21, 22, 23]
 
-    SEN3 = [('在', 'P'), ('2012年', 'NT'), ('的', 'DEG'), ('一', 'CD'), ('轮', 'M'), ('融资', 'NN'), ('中', 'LC'), ('，', 'PU'), ('Etsy', 'NR'), ('的', 'DEG'),
-            ('估值', 'NN'), ('已', 'AD'), ('突破', 'VV'), ('6亿', 'CD'), ('美元', 'M'), ('。', 'PU')]
+    '根据2014年Reuters Institute调查，在西班牙、意大利和巴西，很多WhatsApp用户通过这款应用来获取新闻资讯。'
+
+    '很多 WhatsApp 用户 通 过 款 应用 获取 新闻 资讯'
+
+    SEN3 = [('在', 'P'), ('2012年', 'NT'), ('的', 'DEG'), ('一', 'CD'), ('轮', 'M'), ('融资', 'NN'), ('中', 'LC'), ('，', 'PU'),
+            ('Etsy', 'NR'), ('的', 'DEG'), ('估值', 'NN'), ('已', 'AD'), ('突破', 'VV'), ('6亿', 'CD'), ('美元', 'M'), ('。', 'PU')]
 
     INDEX3 = [8, 10, 12, 13, 14]
 
     'Etsy 估值 突破 6 亿 美元'
 
-    SEN4 = [('没有', 'AD'), ('出现', 'VV'), ('预料', 'NN'), ('中', 'LC'), ('的', 'DEG'), ('问题', 'NN'), ('对于', 'P'), ('苹果', 'NN'), ('来说', 'LC'), ('当然', 'AD'),
-            ('是', 'VC'), ('好事', 'NN'), ('，', 'PU'), ('因为', 'P'), ('iAd', 'NN'), ('从来', 'AD'), ('都', 'AD'), ('没', 'AD'), ('能', 'VV'), ('追上', 'VV'),
-            ('谷歌', 'NR'), ('的', 'DEG'), ('广告', 'NN'), ('业务', 'NN'), ('。', 'PU')]
+    SEN4 = [('没有', 'AD'), ('出现', 'VV'), ('预料', 'NN'), ('中', 'LC'), ('的', 'DEG'), ('问题', 'NN'), ('对于', 'P'), ('苹果', 'NN'),
+            ('来说', 'LC'), ('当然', 'AD'), ('是', 'VC'), ('好事', 'NN'), ('，', 'PU'), ('因为', 'P'), ('iAd', 'NN'), ('从来', 'AD'),
+            ('都', 'AD'), ('没', 'AD'), ('能', 'VV'), ('追上', 'VV'), ('谷歌', 'NR'), ('的', 'DEG'), ('广告', 'NN'), ('业务', 'NN'), ('。', 'PU')]
 
     INDEX4 = [14, 18, 19, 20, 21, 22, 23]
 
     '没有出现预料中的问题对于苹果来说当然是好事，因为iAd从来都没能追上谷歌的广告业务。'
     'iAd 能 追上 谷歌 的 广告 业务'
 
-    SEN5 = [('目前', 'NT'), ('，', 'PU'), ('特斯拉', 'NR'), ('电动', 'JJ'), ('汽车', 'NN'), ('所需', 'NN'), ('电池', 'NN'), ('在', 'P'), ('美国', 'NR'), ('加州', 'NR'),
-            ('弗里蒙特', 'NR'), ('的', 'DEG'), ('工厂', 'NN'), ('生产', 'NN'), ('，', 'PU'), ('但', 'AD'), ('这', 'DT'), ('家', 'M'), ('工厂', 'NN'), ('无法', 'AD'),
-            ('满足', 'VV'), ('特斯拉', 'NR'), ('未来', 'NT'), ('的', 'DEG'), ('生产', 'NN'), ('需求', 'NN'), ('。', 'PU')]
+    SEN5 = [('目前', 'NT'), ('，', 'PU'), ('特斯拉', 'NR'), ('电动', 'JJ'), ('汽车', 'NN'), ('所需', 'NN'), ('电池', 'NN'), ('在', 'P'),
+            ('美国', 'NR'), ('加州', 'NR'), ('弗里蒙特', 'NR'), ('的', 'DEG'), ('工厂', 'NN'), ('生产', 'NN'), ('，', 'PU'), ('但', 'AD'),
+            ('这', 'DT'), ('家', 'M'), ('工厂', 'NN'), ('无法', 'AD'), ('满足', 'VV'), ('特斯拉', 'NR'), ('未来', 'NT'), ('的', 'DEG'),
+            ('生产', 'NN'), ('需求', 'NN'), ('。', 'PU')]
 
     INDEX5 = [17, 18, 20, 21, 22, 23, 24, 25]
 
     '目前，特斯拉电动汽车所需电池在美国加州弗里蒙特的工厂生产，但这家工厂无法满足特斯拉未来的生产需求。'
     '家 工厂 满足 特斯拉 未来 的 生产 需求'
 
-    calculate_index(SEN5, INDEX5)
+    # a, b = calculate_index(SEN3, INDEX3)
+
+    NON_EVENT = [('在', 'P', 1), ('15年', 'NT', 2), ('2月', 'NT', 3), ]
+    date_detector(NON_EVENT)
 
 
     b = now_str(hide_microseconds=False)
