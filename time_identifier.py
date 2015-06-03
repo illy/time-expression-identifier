@@ -11,77 +11,6 @@ import re
 
 ########################################################################
 
-EVENT = [('Etsy', 'NR', 9), ('的', 'DEG', 10), ('估值', 'NN', 11), ('已', 'AD', 12), ('突破', 'VV', 13),
- ('6亿', 'CD', 14), ('美元', 'M', 15), ('。', 'PU', 16)]
-NON_EVENT = [('在', 'P', 1), ('2012年', 'NT', 2), ('的', 'DEG', 3), ('一', 'CD', 4), ('轮', 'M', 5), ('融资', 'NN', 6),
- ('中', 'LC', 7), ('，', 'PU', 8)]
-
-
-cn_year = re.compile('(\d+)年')
-cn_month = re.compile('(\d+)月')
-cn_day = re.compile('(\d+)日')
-current_year = int(str(datetime.now()).split(' ')[0].split('-')[0])
-current_month = int(str(datetime.now()).split(' ')[0].split('-')[1])
-current_day = int(str(datetime.now()).split(' ')[0].split('-')[2])
-
-
-def date_detector(caluse_tuples, ref_yr=current_year, ref_month=current_month, ref_day=current_day):
-    '''
-    This function only deals with the expressions starting with explicit year.
-    '''
-    state = ''
-    for item in caluse_tuples:
-        if state == '':
-            if re.match(cn_year, item[0]):
-                matched_year = int(re.match(cn_year, item[0]).group(1))
-
-                if len(str(matched_year)) == 2:  # if the year only contains two digits
-                    m_year = matched_year
-                    min_year = m_year + 1900
-                    max_year = m_year + 2000
-                    if max_year - ref_yr > ref_yr - min_year:
-                        matched_year = m_year + 1900  # convert the year to 4 digits
-                    else:
-                        matched_year = m_year + 2000
-
-                if len(str(matched_year)) == 4:
-                    if matched_year - ref_yr < 0:
-                        state = 'PAST'
-                    elif matched_year - ref_yr > 0:
-                        state = 'FUTURE'
-                    elif matched_year - ref_yr == 0:
-                        state = 'CURRENT_YEAR'
-
-        elif state == 'CURRENT_YEAR':
-            if re.match(cn_month, item[0]):
-                matched_month = int(re.match(cn_month, item[0]).group(1))
-                if matched_month - ref_month < 0:
-                    state = 'PAST'
-                elif matched_month - ref_month > 0:
-                    state = 'FUTURE'
-                elif matched_month - ref_month == 0:
-                    state = 'CURRENT_MONTH'
-            else:
-                state = 'CURRENT'
-
-        elif state == 'CURRENT_MONTH':
-            if re.match(cn_month, item[0]):
-                matched_day = int(re.match(cn_day, item[0]).group(1))
-                if matched_day - ref_day < 0:
-                    state = 'PAST'
-                elif matched_day - ref_day > 0:
-                    state = 'FUTURE'
-                elif matched_day - ref_day == 0:
-                    state = 'CURRENT'
-            else:
-                state = 'CURRENT'
-
-    if state == 'PAST' or 'FUTURE' or 'CURRENT':
-        print state
-        return state
-
-
-########################################################################
 
 STF_TIME_WORDS = ['年#NT', '年#NN', '年#M', '年#AD', '年#JJ', '年内#NT',
                   '月#NT', '月#NN', '月#M', '月#CD', '月份#NN', '月份#NT', '月#AD',
@@ -144,7 +73,6 @@ FUTURE_NT = ['今后#NT', '未来#NT', '将来#NT', '后来#NT', '此后#NT', '�
              '下月初#NT', '月后#NT',
              '下周#NT',
              '明天#NT', '次日#NT', '后天#NT', '明后天#NT', '翌日#NT', '明晚#NT', '明早#NT']
-
 
 
 ########################################################################
@@ -239,12 +167,14 @@ def calculate_index(sen_tuple, event_index):
                     event_set.update(clause)
 
     event_clause = sorted(event_set, key=itemgetter(2))
-    #event_clause = sorted(event_set, key=lambda tup: tup[2])  # the set of tuples lost the order, so this step reorders
     event_clause_index = map(int, ['%d' % i for k, v, i in event_clause])
 
     non_event_list = ['%s %s %s' % (k, v, i) for k, v, i in full_list if i not in event_clause_index]
     for i in non_event_list:
         non_event_clause.append(tuple(i.split(' ')))
+
+    print event_clause
+    print 'ne', non_event_clause
 
     print 'event clause:', ' '.join('(\'%s\', \'%s\', %s),' % (k, v, i) for k, v, i in event_clause)
     print 'non event clause:', ' '.join('(\'%s\', \'%s\', %s),' % (k, v, i) for k, v, i in non_event_clause)
@@ -254,7 +184,85 @@ def calculate_index(sen_tuple, event_index):
     # print 'event list:', ' '.join('%s %s;' % (k, v,) for k, v in event_list)
     # print ' '.join('%s#%s %s;' % (k, v, i) for k, v, i in full_list)
 
-    return event_clause, non_event_list
+    return event_clause, non_event_clause
+
+
+########################################################################
+
+
+EVENT = [('Etsy', 'NR', 9), ('的', 'DEG', 10), ('估值', 'NN', 11), ('已', 'AD', 12), ('突破', 'VV', 13),
+ ('6亿', 'CD', 14), ('美元', 'M', 15), ('。', 'PU', 16)]
+NON_EVENT = [('在', 'P', 1), ('2012年', 'NT', 2), ('的', 'DEG', 3), ('一', 'CD', 4), ('轮', 'M', 5), ('融资', 'NN', 6),
+ ('中', 'LC', 7), ('，', 'PU', 8)]
+
+
+cn_year = re.compile('(\d+)年')
+cn_month = re.compile('(\d+)月')
+cn_day = re.compile('(\d+)日')
+current_y = int(str(datetime.now()).split(' ')[0].split('-')[0])
+current_m = int(str(datetime.now()).split(' ')[0].split('-')[1])
+current_d = int(str(datetime.now()).split(' ')[0].split('-')[2])
+
+
+def detect_date(clause_tuples, ref_yr=current_y):
+    '''
+    This function only deals with the expressions starting with explicit year.
+    '''
+
+    state = None
+    matched_list = []
+    status = ''
+
+    for word, tag, index in clause_tuples:
+        if status == '':
+
+            y = cn_year.match(word)
+            if y:
+                matched_y = int(y.group(1))
+                if matched_y < 100:  # if the year only contains two digits
+                    m_year = matched_y
+                    min_year = m_year + 1900
+                    max_year = m_year + 2000
+                    if max_year - ref_yr > ref_yr - min_year:
+                        matched_y = m_year + 1900  # convert the year to 4 digits
+                    else:
+                        matched_y = m_year + 2000
+
+                if matched_y > 1900:
+                    matched_list.append((word, tag, index))
+                    state = current_y - matched_y
+                    if state == 0:
+                        status = 'HoldingYear'
+
+        elif status == 'HoldingYear':
+            y = cn_month.match(word)
+            if y:
+                matched_list.append((word, tag, index))
+                matched_m = int(y.group(1))
+                state = current_m - matched_m
+                if state == 0:
+                    status = 'HoldingMonth'
+            else:
+                status = 'CURRENT'
+
+        elif status == 'HoldingMonth':
+            y = cn_day.match(word)
+            if y:
+                matched_list.append((word, tag, index))
+                matched_d = int(y.group(1))
+                state = current_d - matched_d
+                if state == 0:
+                    status = 'CURRENT'
+            else:
+                status = 'CURRENT'
+
+    if state > 0:
+        status = 'PAST'
+    elif state < 0:
+        status = 'FUTURE'
+
+    print status, 'tuple:', ''.join('%s, %s, %s; ' % (k, v, i) for k, v, i in matched_list)
+    return status, matched_list
 
 
 ########################################################################
@@ -401,7 +409,7 @@ if __name__ == '__main__':
 
     '很多 WhatsApp 用户 通 过 款 应用 获取 新闻 资讯'
 
-    SEN3 = [('在', 'P'), ('2012年', 'NT'), ('的', 'DEG'), ('一', 'CD'), ('轮', 'M'), ('融资', 'NN'), ('中', 'LC'), ('，', 'PU'),
+    SEN3 = [('在', 'P'), ('2015年', 'NT'), ('12月', 'NT'), ('的', 'DEG'), ('一', 'CD'), ('轮', 'M'), ('融资', 'NN'), ('中', 'LC'), ('，', 'PU'),
             ('Etsy', 'NR'), ('的', 'DEG'), ('估值', 'NN'), ('已', 'AD'), ('突破', 'VV'), ('6亿', 'CD'), ('美元', 'M'), ('。', 'PU')]
 
     INDEX3 = [8, 10, 12, 13, 14]
@@ -427,10 +435,13 @@ if __name__ == '__main__':
     '目前，特斯拉电动汽车所需电池在美国加州弗里蒙特的工厂生产，但这家工厂无法满足特斯拉未来的生产需求。'
     '家 工厂 满足 特斯拉 未来 的 生产 需求'
 
-    # a, b = calculate_index(SEN3, INDEX3)
+    e, ne = calculate_index(SEN3, INDEX3)
 
-    NON_EVENT = [('在', 'P', 1), ('15年', 'NT', 2), ('2月', 'NT', 3), ]
-    date_detector(NON_EVENT)
+    NON_EVENT = [('在', 'P', 1), ('2015年', 'NT', 2), ('5月', 'NT', 3), ]
+    detect_date(e)
+    detect_date(ne)
+
+
 
 
     b = now_str(hide_microseconds=False)
