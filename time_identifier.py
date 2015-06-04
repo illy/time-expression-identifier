@@ -61,95 +61,11 @@ PAST_VV = ['昨天晚上#VV', '昨天上午#VV', '过去#VV 的#DEC', '去年同
 
 PAST_EXPRESSIONS = PAST_AD + PAST_CD + PAST_M + PAST_NN + PAST_NR + PAST_NT + PAST_VV
 
-PRESENT_NT = ['目前#NT', '当前#NT', '现在#NT', '当时#NT', '如今#NT', '当代#NT', '现时#NT', '此刻#NT', '同时#NT', '现阶段#NT',
-              '此时#NT', '当今#NT', '当季#NT', '当下#NT', '眼下#NT', '时下#NT', '今时#NT', '现#NT', '现如今#NT', '此时#NT', '现今#NT',
-              '同年#NT', '今夏#NT', '本季#NT', '当季#NT',
-              '本月#NT', '当月#NT', '同月#NT', '该月份#NT', '当月份#NT',
-              '本周#NT', '当周#NT', '本周末#NT',
-              '今晚#NT', '今日#NT', '今天#NT', '当天#NT', '今#NT', '即日#NT', '今早#NT', '当日#NT', '当晚#NT', '今晨#NT']
-
-FUTURE_NT = ['今后#NT', '未来#NT', '将来#NT', '后来#NT', '此后#NT', '之后#NT', '日后#NT', '其后#NT', '稍后#NT', '晚些时候#NT',
-             '次年#NT', '明年#NT', '来年#NT', '翌年#NT', '下年#NT',
-             '下月初#NT', '月后#NT',
-             '下周#NT',
-             '明天#NT', '次日#NT', '后天#NT', '明后天#NT', '翌日#NT', '明晚#NT', '明早#NT']
-
 
 ########################################################################
-
-
-def past_fsm(sen):
-    state, result = '', []
-    for word in sen.split(' '):
-        if state == '':
-            for item in PAST_EXPRESSIONS:
-                if item in word:
-                    result.append(('PE   == ' + word + ' ==   ' + sen))
-                    state = 'PE'
-                    break
-            else:
-                state = 'NPE'
-
-            if state == 'NPE':
-                for item in STF_TIME_WORDS:
-                    if item in word:
-                        state = 'TW'
-                        word_ = item
-                        break
-                    else:
-                        state = 'NTWTS'
-        elif state == 'TW':
-            for item in PAST_SUFFIX:
-                if item in word:
-                    result.append(('TWTS   == ' + word_ + ' ' + word + ' ==   ' + sen))
-                    state = 'TWTS'
-                    break
-                else:
-                    state = 'NTWTS'
-
-        if state == 'NTWTS':
-            for item in PAST_PREFIX:
-                if item in word:
-                    state = 'TP'
-                    word_ = word
-                    break
-                else:
-                    state = ''
-        elif state == 'TP':
-            for item in STF_TIME_WORDS:
-                if item in word:
-                    result.append(('TPTW   == ' + word_ + ' ' + word + ' ==   ' + sen))
-                    state = 'TPTW'
-                    break
-                else:
-                    state = ''
-    if state == 'PE' or 'TWTS' or 'TPTW':
-        return result
-    else:
-        return None
-
-
-########################################################################
-
-CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS', '除非#CS', '假如#CS', '要是#CS',
-                  '倘若#CS', '只有#CS', '若是#CS', '如#CS', '假如说#CS', '万一#CS', '假使#CS', '若说#CS']
-
-'3月7日报道智能手表Apple Watch代表着2007年苹果推出智能手机iPhone以来最大赌注，一旦苹果于3月9日正式公布Apple Watch的定价等细节后，苹果将变成完全不同的公司。'
-
-'苹果 于 3月 9日 公布 Apple Watch 的 定价'
-
-SEN = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'), ('代表', 'VV'),
-       ('着', 'AS'), ('2007年', 'NT'), ('苹果', 'NN'), ('推出', 'VV'), ('智能', 'NN'), ('手机', 'NN'), ('iPhone', 'NN'), ('以来', 'LC'),
-       ('最大', 'JJ'), ('赌注', 'NN'), ('，', 'PU'), ('一旦', 'CS'), ('苹果', 'NN'), ('于', 'P'), ('3月', 'NT'), ('9日', 'NT'),
-       ('正式', 'AD'), ('公布', 'VV'), ('Apple', 'NN'), ('Watch', 'NN'), ('的', 'DEG'), ('定价', 'NN'), ('等', 'ETC'), ('细节', 'NN'),
-       ('后', 'LC'), ('，', 'PU'), ('苹果', 'NN'), ('将', 'AD'), ('变成', 'VV'), ('完全', 'AD'), ('不同', 'VA'), ('的', 'DEC'),
-       ('公司', 'NN'), ('。', 'PU')]
-
-INDEX = [20, 21, 22, 23, 25, 26, 27, 28, 29]
-
 
 def calculate_index(sen_tuple, event_index):
-    event_list = []
+    # event_list = []
     full_list = []
     tuple_index = 0
     event_set = set()  # build a set to filter the possibly duplicate clauses
@@ -188,13 +104,6 @@ def calculate_index(sen_tuple, event_index):
 
 
 ########################################################################
-
-
-EVENT = [('Etsy', 'NR', 9), ('的', 'DEG', 10), ('估值', 'NN', 11), ('已', 'AD', 12), ('突破', 'VV', 13),
- ('6亿', 'CD', 14), ('美元', 'M', 15), ('。', 'PU', 16)]
-NON_EVENT = [('在', 'P', 1), ('2012年', 'NT', 2), ('的', 'DEG', 3), ('一', 'CD', 4), ('轮', 'M', 5), ('融资', 'NN', 6),
- ('中', 'LC', 7), ('，', 'PU', 8)]
-
 
 cn_year = re.compile('(\d+)年')
 cn_month = re.compile('(\d+)月')
@@ -264,8 +173,83 @@ def detect_date(clause_tuples, ref_yr=current_y):
     print status, 'tuple:', ''.join('%s, %s, %s; ' % (k, v, i) for k, v, i in matched_list)
     return status, matched_list
 
+########################################################################
+
+
+def detect_past(sen):
+    state, result = '', []
+    for word in sen.split(' '):
+        if state == '':
+            for item in PAST_EXPRESSIONS:
+                if item in word:
+                    result.append(('PE   == ' + word + ' ==   ' + sen))
+                    state = 'PE'
+                    break
+            else:
+                state = 'NPE'
+
+            if state == 'NPE':
+                for item in STF_TIME_WORDS:
+                    if item in word:
+                        state = 'TW'
+                        word_ = item
+                        break
+                    else:
+                        state = 'NTWTS'
+        elif state == 'TW':
+            for item in PAST_SUFFIX:
+                if item in word:
+                    result.append(('TWTS   == ' + word_ + ' ' + word + ' ==   ' + sen))
+                    state = 'TWTS'
+                    break
+                else:
+                    state = 'NTWTS'
+
+        if state == 'NTWTS':
+            for item in PAST_PREFIX:
+                if item in word:
+                    state = 'TP'
+                    word_ = word
+                    break
+                else:
+                    state = ''
+        elif state == 'TP':
+            for item in STF_TIME_WORDS:
+                if item in word:
+                    result.append(('TPTW   == ' + word_ + ' ' + word + ' ==   ' + sen))
+                    state = 'TPTW'
+                    break
+                else:
+                    state = ''
+    if state == 'PE' or 'TWTS' or 'TPTW':
+        return result
+    else:
+        return None
+
 
 ########################################################################
+
+
+PRESENT_NT = ['目前#NT', '当前#NT', '现在#NT', '当时#NT', '如今#NT', '当代#NT', '现时#NT', '此刻#NT', '同时#NT', '现阶段#NT',
+              '此时#NT', '当今#NT', '当季#NT', '当下#NT', '眼下#NT', '时下#NT', '今时#NT', '现#NT', '现如今#NT', '此时#NT', '现今#NT',
+              '同年#NT', '今夏#NT', '本季#NT', '当季#NT',
+              '本月#NT', '当月#NT', '同月#NT', '该月份#NT', '当月份#NT',
+              '本周#NT', '当周#NT', '本周末#NT',
+              '今晚#NT', '今日#NT', '今天#NT', '当天#NT', '今#NT', '即日#NT', '今早#NT', '当日#NT', '当晚#NT', '今晨#NT']
+
+FUTURE_NT = ['今后#NT', '未来#NT', '将来#NT', '后来#NT', '此后#NT', '之后#NT', '日后#NT', '其后#NT', '稍后#NT', '晚些时候#NT',
+             '次年#NT', '明年#NT', '来年#NT', '翌年#NT', '下年#NT',
+             '下月初#NT', '月后#NT',
+             '下周#NT',
+             '明天#NT', '次日#NT', '后天#NT', '明后天#NT', '翌日#NT', '明晚#NT', '明早#NT']
+
+CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS', '除非#CS', '假如#CS', '要是#CS',
+                  '倘若#CS', '只有#CS', '若是#CS', '如#CS', '假如说#CS', '万一#CS', '假使#CS', '若说#CS']
+
+
+
+########################################################################
+
 
 # def SVO(li):  # S- V -O
 #         state = ''
@@ -377,17 +361,16 @@ if __name__ == '__main__':
     #         print i
 
     # for line in raw_data:
-    #     r = past_fsm(line)
+    #     r = detect_past(line)
     #     for i in r:
     #         print i
 
 
-    # r = (past_fsm(line) for line in raw_data)
+    # r = (detect_past(line) for line in raw_data)
     # for i in r:
     #     if i != []:
     #         for j in i:
     #             print j
-
 
     SEN1 = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'), ('代表', 'VV'),
        ('着', 'AS'), ('2007年', 'NT'), ('苹果', 'NN'), ('推出', 'VV'), ('智能', 'NN'), ('手机', 'NN'), ('iPhone', 'NN'), ('以来', 'LC'),
@@ -440,9 +423,6 @@ if __name__ == '__main__':
     NON_EVENT = [('在', 'P', 1), ('2015年', 'NT', 2), ('5月', 'NT', 3), ]
     detect_date(e)
     detect_date(ne)
-
-
-
 
     b = now_str(hide_microseconds=False)
     print a
