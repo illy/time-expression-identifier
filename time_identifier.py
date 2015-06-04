@@ -178,6 +178,7 @@ def detect_date(clause_tuples, ref_yr=current_y):
 
 def detect_past(clause):
     status, result = '', []
+
     for tup in clause:
         token, pos, index = tup[0], tup[1], tup[2]
         possed_token = token + '#' + pos
@@ -185,8 +186,7 @@ def detect_past(clause):
         if status == '':
             for item in PAST_EXPRESSIONS:
                 if item in possed_token:
-                    result.append(tup)
-                    status = 'PE'
+                    status = 'PE'; result.append(tup)
                     break
             else:
                 for item in STF_TIME_WORDS:
@@ -204,8 +204,7 @@ def detect_past(clause):
         elif status == 'TW':
             for item in PAST_SUFFIX:
                 if item in possed_token:
-                    result.append(tup)
-                    status = 'TWTS'
+                    status = 'TWTS'; result.append(tup)
                     break
                 else:
                     for item in PAST_PREFIX:
@@ -218,8 +217,7 @@ def detect_past(clause):
         elif status == 'TP':
             for item in STF_TIME_WORDS:
                 if item in possed_token:
-                    result.append(tup)
-                    status = 'TPTW'
+                    status = 'TPTW'; result.append(tup)
                     break
                 else:
                     status = ''
@@ -231,55 +229,55 @@ def detect_past(clause):
         return None
 
 
-def _detect_past(sen):
-    status, result = '', []
-    for word in sen.split(' '):
-        if status == '':
-            for item in PAST_EXPRESSIONS:
-                if item in word:
-                    result.append(('PE   == ' + word + ' ==   ' + sen))
-                    status = 'PE'
-                    break
-            else:
-                status = 'NPE'
-
-            if status == 'NPE':
-                for item in STF_TIME_WORDS:
-                    if item in word:
-                        status = 'TW'
-                        word_ = item
-                        break
-                    else:
-                        status = 'NTWTS'
-        elif status == 'TW':
-            for item in PAST_SUFFIX:
-                if item in word:
-                    result.append(('TWTS   == ' + word_ + ' ' + word + ' ==   ' + sen))
-                    status = 'TWTS'
-                    break
-                else:
-                    status = 'NTWTS'
-
-        if status == 'NTWTS':
-            for item in PAST_PREFIX:
-                if item in word:
-                    status = 'TP'
-                    word_ = word
-                    break
-                else:
-                    status = ''
-        elif status == 'TP':
-            for item in STF_TIME_WORDS:
-                if item in word:
-                    result.append(('TPTW   == ' + word_ + ' ' + word + ' ==   ' + sen))
-                    status = 'TPTW'
-                    break
-                else:
-                    status = ''
-    if status == 'PE' or 'TWTS' or 'TPTW':
-        return result
-    else:
-        return None
+# def _detect_past(sen):
+#     status, result = '', []
+#     for word in sen.split(' '):
+#         if status == '':
+#             for item in PAST_EXPRESSIONS:
+#                 if item in word:
+#                     result.append(('PE   == ' + word + ' ==   ' + sen))
+#                     status = 'PE'
+#                     break
+#             else:
+#                 status = 'NPE'
+#
+#             if status == 'NPE':
+#                 for item in STF_TIME_WORDS:
+#                     if item in word:
+#                         status = 'TW'
+#                         word_ = item
+#                         break
+#                     else:
+#                         status = 'NTWTS'
+#         elif status == 'TW':
+#             for item in PAST_SUFFIX:
+#                 if item in word:
+#                     result.append(('TWTS   == ' + word_ + ' ' + word + ' ==   ' + sen))
+#                     status = 'TWTS'
+#                     break
+#                 else:
+#                     status = 'NTWTS'
+#
+#         if status == 'NTWTS':
+#             for item in PAST_PREFIX:
+#                 if item in word:
+#                     status = 'TP'
+#                     word_ = word
+#                     break
+#                 else:
+#                     status = ''
+#         elif status == 'TP':
+#             for item in STF_TIME_WORDS:
+#                 if item in word:
+#                     result.append(('TPTW   == ' + word_ + ' ' + word + ' ==   ' + sen))
+#                     status = 'TPTW'
+#                     break
+#                 else:
+#                     status = ''
+#     if status == 'PE' or 'TWTS' or 'TPTW':
+#         return result
+#     else:
+#         return None
 
 
 ########################################################################
@@ -300,7 +298,6 @@ FUTURE_NT = ['今后#NT', '未来#NT', '将来#NT', '后来#NT', '此后#NT', '�
 
 CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS', '除非#CS', '假如#CS', '要是#CS',
                   '倘若#CS', '只有#CS', '若是#CS', '如#CS', '假如说#CS', '万一#CS', '假使#CS', '若说#CS']
-
 
 
 ########################################################################
@@ -421,8 +418,6 @@ if __name__ == '__main__':
     #         print i
 
 
-
-
     SEN1 = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'), ('代表', 'VV'),
        ('着', 'AS'), ('2007年', 'NT'), ('苹果', 'NN'), ('推出', 'VV'), ('智能', 'NN'), ('手机', 'NN'), ('iPhone', 'NN'), ('以来', 'LC'),
        ('最大', 'JJ'), ('赌注', 'NN'), ('，', 'PU'), ('一旦', 'CS'), ('苹果', 'NN'), ('于', 'P'), ('3月', 'NT'), ('9日', 'NT'),
@@ -472,9 +467,6 @@ if __name__ == '__main__':
     e, ne = calculate_index(SEN3, INDEX3)
     r1 =detect_past(e)
     r2 = detect_past(ne)
-
-
-
 
     b = now_str(hide_microseconds=False)
     print a
