@@ -65,7 +65,7 @@ PAST_EXPRESSIONS = PAST_AD + PAST_CD + PAST_M + PAST_NN + PAST_NR + PAST_NT + PA
 ########################################################################
 
 def calculate_index(sen_tuple, event_index):
-    # event_list = []
+    event_list = []
     full_list = []
     tuple_index = 0
     event_set = set()  # build a set to filter the possibly duplicate clauses
@@ -89,12 +89,9 @@ def calculate_index(sen_tuple, event_index):
     for i in non_event_list:
         non_event_clause.append(tuple(i.split(' ')))
 
-    print event_clause
-    print 'ne', non_event_clause
-
-    print 'event clause:', ' '.join('(\'%s\', \'%s\', %s),' % (k, v, i) for k, v, i in event_clause)
-    print 'non event clause:', ' '.join('(\'%s\', \'%s\', %s),' % (k, v, i) for k, v, i in non_event_clause)
-
+    # print 'event clause:', ' '.join('(\'%s\', \'%s\', %s),' % (k, v, i) for k, v, i in event_clause)
+    # print 'non event clause:', ' '.join('(\'%s\', \'%s\', %s),' % (k, v, i) for k, v, i in non_event_clause)
+    #
     # for i in event_index:
     #     event_list.append([x for x in sen_tuple[i]])
     # print 'event list:', ' '.join('%s %s;' % (k, v,) for k, v in event_list)
@@ -118,7 +115,7 @@ def detect_date(clause_tuples, ref_yr=current_y):
     This function only deals with the expressions starting with explicit year.
     '''
 
-    state = None
+    state = 0
     matched_list = []
     status = ''
 
@@ -165,6 +162,9 @@ def detect_date(clause_tuples, ref_yr=current_y):
             else:
                 status = 'CURRENT'
 
+        else:
+            status = ''
+
     if state > 0:
         status = 'PAST'
     elif state < 0:
@@ -176,52 +176,107 @@ def detect_date(clause_tuples, ref_yr=current_y):
 ########################################################################
 
 
-def detect_past(sen):
-    state, result = '', []
+def detect_past(clause):
+    status, result = '', []
+    for tup in clause:
+        token, pos, index = tup[0], tup[1], tup[2]
+        possed_token = token + '#' + pos
+
+        if status == '':
+            for item in PAST_EXPRESSIONS:
+                if item in possed_token:
+                    result.append(tup)
+                    status = 'PE'
+                    break
+            else:
+                for item in STF_TIME_WORDS:
+                    if item in possed_token:
+                        status = 'TW'
+                        break
+                    else:
+                        for item in PAST_PREFIX:
+                            if item in possed_token:
+                                status = 'TP'
+                                break
+                            else:
+                                status = ''
+
+        elif status == 'TW':
+            for item in PAST_SUFFIX:
+                if item in possed_token:
+                    result.append(tup)
+                    status = 'TWTS'
+                    break
+                else:
+                    for item in PAST_PREFIX:
+                        if item in possed_token:
+                            status = 'TP'
+                            break
+                        else:
+                            status = ''
+
+        elif status == 'TP':
+            for item in STF_TIME_WORDS:
+                if item in possed_token:
+                    result.append(tup)
+                    status = 'TPTW'
+                    break
+                else:
+                    status = ''
+
+    if status == 'PE' or 'TWTS' or 'TPTW':
+        print status, ' '.join('%s %s %s' % (k, v, i) for k, v, i in result)
+        return result
+    else:
+        return None
+
+
+def _detect_past(sen):
+    status, result = '', []
     for word in sen.split(' '):
-        if state == '':
+        if status == '':
             for item in PAST_EXPRESSIONS:
                 if item in word:
                     result.append(('PE   == ' + word + ' ==   ' + sen))
-                    state = 'PE'
+                    status = 'PE'
                     break
             else:
-                state = 'NPE'
+                status = 'NPE'
 
-            if state == 'NPE':
+            if status == 'NPE':
                 for item in STF_TIME_WORDS:
                     if item in word:
-                        state = 'TW'
+                        status = 'TW'
                         word_ = item
                         break
                     else:
-                        state = 'NTWTS'
-        elif state == 'TW':
+                        status = 'NTWTS'
+        elif status == 'TW':
             for item in PAST_SUFFIX:
                 if item in word:
                     result.append(('TWTS   == ' + word_ + ' ' + word + ' ==   ' + sen))
-                    state = 'TWTS'
+                    status = 'TWTS'
                     break
                 else:
-                    state = 'NTWTS'
+                    status = 'NTWTS'
 
-        if state == 'NTWTS':
+        if status == 'NTWTS':
             for item in PAST_PREFIX:
                 if item in word:
-                    state = 'TP'
+                    status = 'TP'
                     word_ = word
                     break
                 else:
-                    state = ''
-        elif state == 'TP':
+                    status = ''
+        elif status == 'TP':
             for item in STF_TIME_WORDS:
                 if item in word:
                     result.append(('TPTW   == ' + word_ + ' ' + word + ' ==   ' + sen))
-                    state = 'TPTW'
+                    status = 'TPTW'
                     break
                 else:
-                    state = ''
-    if state == 'PE' or 'TWTS' or 'TPTW':
+                    status = ''
+    if status == 'PE' or 'TWTS' or 'TPTW':
         return result
     else:
         return None
@@ -366,11 +421,7 @@ if __name__ == '__main__':
     #         print i
 
 
-    # r = (detect_past(line) for line in raw_data)
-    # for i in r:
-    #     if i != []:
-    #         for j in i:
-    #             print j
+
 
     SEN1 = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'), ('代表', 'VV'),
        ('着', 'AS'), ('2007年', 'NT'), ('苹果', 'NN'), ('推出', 'VV'), ('智能', 'NN'), ('手机', 'NN'), ('iPhone', 'NN'), ('以来', 'LC'),
@@ -392,7 +443,7 @@ if __name__ == '__main__':
 
     '很多 WhatsApp 用户 通 过 款 应用 获取 新闻 资讯'
 
-    SEN3 = [('在', 'P'), ('2015年', 'NT'), ('12月', 'NT'), ('的', 'DEG'), ('一', 'CD'), ('轮', 'M'), ('融资', 'NN'), ('中', 'LC'), ('，', 'PU'),
+    SEN3 = [('在', 'P'), ('2015年', 'NT'), ('的', 'DEG'), ('一', 'CD'), ('轮', 'M'), ('融资', 'NN'), ('中', 'LC'), ('，', 'PU'),
             ('Etsy', 'NR'), ('的', 'DEG'), ('估值', 'NN'), ('已', 'AD'), ('突破', 'VV'), ('6亿', 'CD'), ('美元', 'M'), ('。', 'PU')]
 
     INDEX3 = [8, 10, 12, 13, 14]
@@ -411,7 +462,7 @@ if __name__ == '__main__':
     SEN5 = [('目前', 'NT'), ('，', 'PU'), ('特斯拉', 'NR'), ('电动', 'JJ'), ('汽车', 'NN'), ('所需', 'NN'), ('电池', 'NN'), ('在', 'P'),
             ('美国', 'NR'), ('加州', 'NR'), ('弗里蒙特', 'NR'), ('的', 'DEG'), ('工厂', 'NN'), ('生产', 'NN'), ('，', 'PU'), ('但', 'AD'),
             ('这', 'DT'), ('家', 'M'), ('工厂', 'NN'), ('无法', 'AD'), ('满足', 'VV'), ('特斯拉', 'NR'), ('未来', 'NT'), ('的', 'DEG'),
-            ('生产', 'NN'), ('需求', 'NN'), ('。', 'PU')]
+            ('生产', 'NN'), ('需求', 'NN'), ('。', 'PU'), ('昨天上午', 'VV')]
 
     INDEX5 = [17, 18, 20, 21, 22, 23, 24, 25]
 
@@ -419,10 +470,11 @@ if __name__ == '__main__':
     '家 工厂 满足 特斯拉 未来 的 生产 需求'
 
     e, ne = calculate_index(SEN3, INDEX3)
+    r1 =detect_past(e)
+    r2 = detect_past(ne)
 
-    NON_EVENT = [('在', 'P', 1), ('2015年', 'NT', 2), ('5月', 'NT', 3), ]
-    detect_date(e)
-    detect_date(ne)
+
+
 
     b = now_str(hide_microseconds=False)
     print a
