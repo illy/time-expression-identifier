@@ -77,15 +77,12 @@ FUTURE_PREFIX = ['后#DT', '后#JJ', '下#DT']
 
 FUTURE_SUFFIX = ['后#LC']
 
-FUTURE_AD = ['此后#AD', '紧随其后#AD', '其后#AD', '稍后#AD', '而后#AD', '日后#AD', '事后#AD', '在此之后#AD',
+FUTURE_AD = ['此后#AD', '稍后#AD', '而后#AD', '日后#AD', '事后#AD', '在此之后#AD',
              '不久以后#AD', '之后#AD', '即将#AD', '将#AD', '将会#AD', '将要#AD', '后来#AD', '以后#AD']
 
-FUTURE_NN = ['其后#NN', '会后#NN', '下周#NN', '下个月#NN', '将会#NN']
+FUTURE_NN = ['会后#NN', '下周#NN', '下个月#NN', '将会#NN']
 
-FUTURE_NT = ['今后#NT', '日后#NT', '其后#NT', '将来#NT']
-
-CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS', '除非#CS', '假如#CS', '要是#CS',
-                  '倘若#CS', '只有#CS', '若是#CS', '如#CS', '假如说#CS', '万一#CS', '假使#CS', '若说#CS']
+FUTURE_NT = ['今后#NT', '日后#NT', '将来#NT']
 
 FUTURE_PHRASES = FUTURE_AD + FUTURE_NN + FUTURE_NT
 
@@ -214,6 +211,11 @@ PRESENT_NT = ['目前#NT', '当前#NT', '现在#NT', '当时#NT', '如今#NT', '
 PRESENT_NN = ['当下#NN']
 
 
+
+CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS', '除非#CS', '假如#CS', '要是#CS',
+                  '倘若#CS', '只有#CS', '若是#CS', '如#CS', '假如说#CS', '万一#CS', '假使#CS', '若说#CS']
+
+
 ########################################################################
 
 
@@ -269,6 +271,9 @@ def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp
         return result
     else:
         return None
+
+
+########################################################################
 
 
 def detect_time_in_sen(sen, temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_SUFFIX, temp_prefix=FUTURE_PREFIX):
@@ -426,8 +431,8 @@ if __name__ == '__main__':
     a = now_str(hide_microseconds=False)
 
     result = []
-    raw_data = open('/Users/acepor/work/time/data/possed_news.txt', 'r')
-    # raw_data = open('/Users/acepor/work/test/temp.txt', 'r')
+    # raw_data = open('/Users/acepor/work/time/data/possed_news.txt', 'r')
+    raw_data = open('/Users/acepor/work/time/data/stf_result.txt', 'r')
 
     # result = (past_identify(line) for line in raw_data)
     # for i in result:
@@ -438,7 +443,6 @@ if __name__ == '__main__':
         r = detect_time_in_sen(line)
         for i in r:
             print i
-
 
     SEN1 = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'), ('代表', 'VV'),
        ('着', 'AS'), ('2007年', 'NT'), ('苹果', 'NN'), ('推出', 'VV'), ('智能', 'NN'), ('手机', 'NN'), ('iPhone', 'NN'), ('以来', 'LC'),
