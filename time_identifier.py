@@ -9,10 +9,11 @@ from operator import itemgetter
 from datetime import datetime
 import re
 
+
 ########################################################################
 
 
-STF_TIME_WORDS = ['年#NT', '年#NN', '年#M', '年#AD', '年#JJ', '年内#NT',
+TIME_MORPHEMES = ['年#NT', '年#NN', '年#M', '年#AD', '年#JJ', '年内#NT',
                   '月#NT', '月#NN', '月#M', '月#CD', '月份#NN', '月份#NT', '月#AD',
                   '周#NN', '周#NT', '周#M', '周#VV', '周#JJ', '礼拜#NN', '礼拜#NT', '礼拜#M', '星期#NN', '星期#NT',
                   '日#NN', '日#NT', '日#AD','日#M', '天#NN', '天#NT', '天#AD', '天#M', '夜#AD', '夜#NT',
@@ -25,9 +26,10 @@ PAST_PREFIX = ['前#DT', '前#LC', '前#JJ', '前面#LC', '上#DT', '上#LC', '�
 PAST_SUFFIX = ['前#DT', '前#LC', '前#JJ', '前#AD',
                '底#NN', '底#NT', '初#NN', '初#NT', '初#LC', '以来#LC', '以来#AD']
 
-PAST_AD = ['曾经#AD', '曾#AD', '最初#AD', '此前#AD', '之前#AD', '先前#AD', '刚才#AD', '往前#AD', '日前#AD', '早前#AD',
-           '早日#AD', '上次#AD', '不久前#AD', '已经#AD', '已#AD', '早已#AD', '早就#AD', '以前#AD',
-           '年来#AD', '前不久#AD', '不久以后#AD', '不久#AD', '前一天#AD', '去年同期#AD']
+PAST_AD = ['曾经#AD', '曾#AD', '最初#AD', '此前#AD', '之前#AD', '先前#AD', '往前#AD', '日前#AD', '早前#AD',
+           '早日#AD', '上次#AD', '不久前#AD', '已经#AD', '已#AD', '早已#AD', '早就#AD', '以前#AD', '事先#AD4'
+           '年来#AD', '前不久#AD', '不久以后#AD', '不久#AD', '前一天#AD', '去年同期#AD',
+           '当初#AD', '起初#AD', '本来#AD', '刚才#AD', '早就#AD']
 
 PAST_CD = ['去年底#CD']
 
@@ -38,13 +40,13 @@ PAST_NN = ['此前#NN', '之前#NN', '从前#NN', '先前#NN', '以往#NN', '往
            '上周#NN', '上个星期#NN', '上星期#NN', '上礼拜#NN', '上个礼拜#NN',
            '前日#NN', '前夜#NN', '天前#NN', '日前#NN', '昨夜#NN', '昨天#NN', '昨日#NN',
            '前一天#NN', '前三天#NN', '次日#NN', '昨天上午#NN', '昨天中午#NN', '昨天夜里#NN', '近些天#NN', '往日#NN', '近日#NN',
-           '上次#NN', '最初#NN', '早前#NN', '生前#NN', '近期#NN', '近期内#NN', '早些时候#NN', '初期#NN', '早期#NN',
+           '上次#NN', '最初#NN', '早前#NN', '生前#NN', '近期#NN', '近期内#NN', '早些时候#NN', '初期#NN', '早期#NN', '老早#NN',
            '前半生#NN', '公元前#NN',
-           '早已#NN', '早就#NN']
+           '早已#NN', '早就#NN', '起先#NN']
 
 PAST_M = ['年来#M']
 
-PAST_NT = ['之前#NT', '从前#NT', '以往#NT', '最初#NT', '当初#NT', '不久#NT', '先前#NT', '此前#NT', '以前#NT', '最近#NT',
+PAST_NT = ['之前#NT', '从前#NT', '以往#NT', '最初#NT', '当初#NT', '不久#NT', '先前#NT', '此前#NT', '以前#NT', '最近#NT', '当初#AD',
            '年初#NT', '前年#NT', '上年#NT', '去年#NT', '幼年#NT', '往年#NT', '早年#NT', '近些年#NT', '前些年#NT', '近两年#NT',
            '近半年#NT', '近年#NT', '年内#NT', '早年间#NT', '年来#NT', '年前#NT', '年末#NT', '当年#NT', '历年#NT', '前几年#NT',
            '近些年#NT', '早些年#NT', '前半年#NT', '早年#NT', '前些天#NT',
@@ -59,8 +61,33 @@ PAST_NR = ['刚过去#NR']
 
 PAST_VV = ['昨天晚上#VV', '昨天上午#VV', '过去#VV 的#DEC', '去年同期#VV', '去年底#VV']
 
-PAST_EXPRESSIONS = PAST_AD + PAST_CD + PAST_M + PAST_NN + PAST_NR + PAST_NT + PAST_VV
+PAST_PHRASES = PAST_AD + PAST_CD + PAST_M + PAST_NN + PAST_NR + PAST_NT + PAST_VV
 
+
+########################################################################
+
+
+FUTURE_NT = ['今后#NT', '未来#NT', '将来#NT', '后来#NT', '此后#NT', '之后#NT', '日后#NT', '其后#NT', '稍后#NT', '晚些时候#NT',
+             '次年#NT', '明年#NT', '来年#NT', '翌年#NT', '下年#NT',
+             '下月初#NT', '月后#NT',
+             '下周#NT',
+             '明天#NT', '次日#NT', '后天#NT', '明后天#NT', '翌日#NT', '明晚#NT', '明早#NT']
+
+FUTURE_PREFIX = ['后#DT', '后#JJ', '下#DT']
+
+FUTURE_SUFFIX = ['后#LC']
+
+FUTURE_AD = ['此后#AD', '紧随其后#AD', '其后#AD', '稍后#AD', '而后#AD', '日后#AD', '事后#AD', '在此之后#AD',
+             '不久以后#AD', '之后#AD', '即将#AD', '将#AD', '将会#AD', '将要#AD', '后来#AD', '以后#AD']
+
+FUTURE_NN = ['其后#NN', '会后#NN', '下周#NN', '下个月#NN', '将会#NN']
+
+FUTURE_NT = ['今后#NT', '日后#NT', '其后#NT', '将来#NT']
+
+CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS', '除非#CS', '假如#CS', '要是#CS',
+                  '倘若#CS', '只有#CS', '若是#CS', '如#CS', '假如说#CS', '万一#CS', '假使#CS', '若说#CS']
+
+FUTURE_PHRASES = FUTURE_AD + FUTURE_NN + FUTURE_NT
 
 ########################################################################
 
@@ -175,8 +202,17 @@ def detect_date(clause_tuples, ref_yr=current_y):
 
 ########################################################################
 
+PRESENT_NT = ['目前#NT', '当前#NT', '现在#NT', '当时#NT', '如今#NT', '当代#NT', '现时#NT', '此刻#NT', '同时#NT', '现阶段#NT',
+              '此时#NT', '当今#NT', '当季#NT', '当下#NT', '眼下#NT', '时下#NT', '今时#NT', '现#NT', '现如今#NT', '此时#NT', '现今#NT',
+              '同年#NT', '今夏#NT', '本季#NT', '当季#NT',
+              '本月#NT', '当月#NT', '同月#NT', '该月份#NT', '当月份#NT',
+              '本周#NT', '当周#NT', '本周末#NT',
+              '今晚#NT', '今日#NT', '今天#NT', '当天#NT', '今#NT', '即日#NT', '今早#NT', '当日#NT', '当晚#NT', '今晨#NT']
+PRESENT_NN = ['当下#NN']
 
-def detect_past(clause):
+########################################################################
+
+def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp_prefix=PAST_PREFIX, state='PAST'):
     status, result = '', []
 
     for tup in clause:
@@ -184,17 +220,17 @@ def detect_past(clause):
         possed_token = token + '#' + pos
 
         if status == '':
-            for item in PAST_EXPRESSIONS:
+            for item in temp_phrases:
                 if item in possed_token:
                     status = 'PE'; result.append(tup)
                     break
             else:
-                for item in STF_TIME_WORDS:
+                for item in TIME_MORPHEMES:
                     if item in possed_token:
                         status = 'TW'
                         break
                     else:
-                        for item in PAST_PREFIX:
+                        for item in temp_prefix:
                             if item in possed_token:
                                 status = 'TP'
                                 break
@@ -202,12 +238,12 @@ def detect_past(clause):
                                 status = ''
 
         elif status == 'TW':
-            for item in PAST_SUFFIX:
+            for item in temp_suffix:
                 if item in possed_token:
                     status = 'TWTS'; result.append(tup)
                     break
                 else:
-                    for item in PAST_PREFIX:
+                    for item in temp_prefix:
                         if item in possed_token:
                             status = 'TP'
                             break
@@ -215,7 +251,7 @@ def detect_past(clause):
                             status = ''
 
         elif status == 'TP':
-            for item in STF_TIME_WORDS:
+            for item in TIME_MORPHEMES:
                 if item in possed_token:
                     status = 'TPTW'; result.append(tup)
                     break
@@ -223,84 +259,122 @@ def detect_past(clause):
                     status = ''
 
     if status == 'PE' or 'TWTS' or 'TPTW':
+        status = state
         print status, ' '.join('%s %s %s' % (k, v, i) for k, v, i in result)
         return result
     else:
         return None
 
 
-# def _detect_past(sen):
+# def _detect_past(clause):
 #     status, result = '', []
-#     for word in sen.split(' '):
+#
+#     for tup in clause:
+#         token, pos, index = tup[0], tup[1], tup[2]
+#         possed_token = token + '#' + pos
+#
 #         if status == '':
-#             for item in PAST_EXPRESSIONS:
-#                 if item in word:
-#                     result.append(('PE   == ' + word + ' ==   ' + sen))
-#                     status = 'PE'
+#             for item in PAST_PHRASES:
+#                 if item in possed_token:
+#                     status = 'PE'; result.append(tup)
 #                     break
 #             else:
-#                 status = 'NPE'
-#
-#             if status == 'NPE':
-#                 for item in STF_TIME_WORDS:
-#                     if item in word:
+#                 for item in TIME_MORPHEMES:
+#                     if item in possed_token:
 #                         status = 'TW'
-#                         word_ = item
 #                         break
 #                     else:
-#                         status = 'NTWTS'
+#                         for item in PAST_PREFIX:
+#                             if item in possed_token:
+#                                 status = 'TP'
+#                                 break
+#                             else:
+#                                 status = ''
+#
 #         elif status == 'TW':
 #             for item in PAST_SUFFIX:
-#                 if item in word:
-#                     result.append(('TWTS   == ' + word_ + ' ' + word + ' ==   ' + sen))
-#                     status = 'TWTS'
+#                 if item in possed_token:
+#                     status = 'TWTS'; result.append(tup)
 #                     break
 #                 else:
-#                     status = 'NTWTS'
+#                     for item in PAST_PREFIX:
+#                         if item in possed_token:
+#                             status = 'TP'
+#                             break
+#                         else:
+#                             status = ''
 #
-#         if status == 'NTWTS':
-#             for item in PAST_PREFIX:
-#                 if item in word:
-#                     status = 'TP'
-#                     word_ = word
-#                     break
-#                 else:
-#                     status = ''
 #         elif status == 'TP':
-#             for item in STF_TIME_WORDS:
-#                 if item in word:
-#                     result.append(('TPTW   == ' + word_ + ' ' + word + ' ==   ' + sen))
-#                     status = 'TPTW'
+#             for item in TIME_MORPHEMES:
+#                 if item in possed_token:
+#                     status = 'TPTW'; result.append(tup)
 #                     break
 #                 else:
 #                     status = ''
+#
 #     if status == 'PE' or 'TWTS' or 'TPTW':
+#         status = 'PAST'
+#         print status, ' '.join('%s %s %s' % (k, v, i) for k, v, i in result)
 #         return result
 #     else:
 #         return None
 
 
+def detect_time_in_sen(sen, temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_SUFFIX, temp_prefix=FUTURE_PREFIX):
+    status, result = '', []
+    for word in sen.split(' '):
+        if status == '':
+            for item in temp_phrases:
+                if item in word:
+                    result.append(('TEE   == ' + word + ' ==   ' + sen))
+                    status = 'TEE'
+                    break
+            else:
+                status = 'NTE'
+
+            if status == 'NTE':
+                for item in TIME_MORPHEMES:
+                    if item in word:
+                        status = 'TW'
+                        word_ = item
+                        break
+                    else:
+                        status = 'NTWTS'
+        elif status == 'TW':
+            for item in temp_suffix:
+                if item in word:
+                    result.append(('SUX   == ' + word_ + ' ' + word + ' ==   ' + sen))
+                    status = 'SUX'
+                    break
+                else:
+                    status = 'NTWTS'
+
+        if status == 'NTWTS':
+            for item in temp_prefix:
+                if item in word:
+                    status = 'TP'
+                    word_ = word
+                    break
+                else:
+                    status = ''
+        elif status == 'TP':
+            for item in TIME_MORPHEMES:
+                if item in word:
+                    result.append(('PRX   == ' + word_ + ' ' + word + ' ==   ' + sen))
+                    status = 'PRX'
+                    break
+                else:
+                    status = ''
+    if status == 'TEE' or 'SUX' or 'PRX':
+        return result
+    else:
+        return None
+
+
 ########################################################################
 
 
-PRESENT_NT = ['目前#NT', '当前#NT', '现在#NT', '当时#NT', '如今#NT', '当代#NT', '现时#NT', '此刻#NT', '同时#NT', '现阶段#NT',
-              '此时#NT', '当今#NT', '当季#NT', '当下#NT', '眼下#NT', '时下#NT', '今时#NT', '现#NT', '现如今#NT', '此时#NT', '现今#NT',
-              '同年#NT', '今夏#NT', '本季#NT', '当季#NT',
-              '本月#NT', '当月#NT', '同月#NT', '该月份#NT', '当月份#NT',
-              '本周#NT', '当周#NT', '本周末#NT',
-              '今晚#NT', '今日#NT', '今天#NT', '当天#NT', '今#NT', '即日#NT', '今早#NT', '当日#NT', '当晚#NT', '今晨#NT']
 
-FUTURE_NT = ['今后#NT', '未来#NT', '将来#NT', '后来#NT', '此后#NT', '之后#NT', '日后#NT', '其后#NT', '稍后#NT', '晚些时候#NT',
-             '次年#NT', '明年#NT', '来年#NT', '翌年#NT', '下年#NT',
-             '下月初#NT', '月后#NT',
-             '下周#NT',
-             '明天#NT', '次日#NT', '后天#NT', '明后天#NT', '翌日#NT', '明晚#NT', '明早#NT']
-
-CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS', '除非#CS', '假如#CS', '要是#CS',
-                  '倘若#CS', '只有#CS', '若是#CS', '如#CS', '假如说#CS', '万一#CS', '假使#CS', '若说#CS']
-
-
-########################################################################
 
 
 # def SVO(li):  # S- V -O
@@ -400,11 +474,8 @@ if __name__ == '__main__':
     gc.disable()
     a = now_str(hide_microseconds=False)
 
-    # for i in PAST_PATTERNS:
-    #     print i
-
-    # result = []
-    # raw_data = open('/Users/acepor/work/test/possed_news.txt', 'r')
+    result = []
+    raw_data = open('/Users/acepor/work/time/data/possed_news.txt', 'r')
     # raw_data = open('/Users/acepor/work/test/temp.txt', 'r')
 
     # result = (past_identify(line) for line in raw_data)
@@ -412,10 +483,10 @@ if __name__ == '__main__':
     #     if i is not None:
     #         print i
 
-    # for line in raw_data:
-    #     r = detect_past(line)
-    #     for i in r:
-    #         print i
+    for line in raw_data:
+        r = detect_time_in_sen(line)
+        for i in r:
+            print i
 
 
     SEN1 = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'), ('代表', 'VV'),
@@ -464,10 +535,10 @@ if __name__ == '__main__':
     '目前，特斯拉电动汽车所需电池在美国加州弗里蒙特的工厂生产，但这家工厂无法满足特斯拉未来的生产需求。'
     '家 工厂 满足 特斯拉 未来 的 生产 需求'
 
-    e, ne = calculate_index(SEN3, INDEX3)
-    r1 =detect_past(e)
-    r2 = detect_past(ne)
+    # e, ne = calculate_index(SEN3, INDEX3)
+    # r1 = detect_time(e)
+    # r2 = detect_time(ne)
 
     b = now_str(hide_microseconds=False)
-    print a
+    print a,
     print b
