@@ -129,6 +129,7 @@ def calculate_index(sen_tuple, event_index):
 
 ########################################################################
 
+
 cn_year = re.compile('(\d+)年')
 cn_month = re.compile('(\d+)月')
 cn_day = re.compile('(\d+)日')
@@ -200,7 +201,9 @@ def detect_date(clause_tuples, ref_yr=current_y):
     print status, 'tuple:', ''.join('%s, %s, %s; ' % (k, v, i) for k, v, i in matched_list)
     return status, matched_list
 
+
 ########################################################################
+
 
 PRESENT_NT = ['目前#NT', '当前#NT', '现在#NT', '当时#NT', '如今#NT', '当代#NT', '现时#NT', '此刻#NT', '同时#NT', '现阶段#NT',
               '此时#NT', '当今#NT', '当季#NT', '当下#NT', '眼下#NT', '时下#NT', '今时#NT', '现#NT', '现如今#NT', '此时#NT', '现今#NT',
@@ -210,7 +213,9 @@ PRESENT_NT = ['目前#NT', '当前#NT', '现在#NT', '当时#NT', '如今#NT', '
               '今晚#NT', '今日#NT', '今天#NT', '当天#NT', '今#NT', '即日#NT', '今早#NT', '当日#NT', '当晚#NT', '今晨#NT']
 PRESENT_NN = ['当下#NN']
 
+
 ########################################################################
+
 
 def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp_prefix=PAST_PREFIX, state='PAST'):
     status, result = '', []
@@ -264,60 +269,6 @@ def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp
         return result
     else:
         return None
-
-
-# def _detect_past(clause):
-#     status, result = '', []
-#
-#     for tup in clause:
-#         token, pos, index = tup[0], tup[1], tup[2]
-#         possed_token = token + '#' + pos
-#
-#         if status == '':
-#             for item in PAST_PHRASES:
-#                 if item in possed_token:
-#                     status = 'PE'; result.append(tup)
-#                     break
-#             else:
-#                 for item in TIME_MORPHEMES:
-#                     if item in possed_token:
-#                         status = 'TW'
-#                         break
-#                     else:
-#                         for item in PAST_PREFIX:
-#                             if item in possed_token:
-#                                 status = 'TP'
-#                                 break
-#                             else:
-#                                 status = ''
-#
-#         elif status == 'TW':
-#             for item in PAST_SUFFIX:
-#                 if item in possed_token:
-#                     status = 'TWTS'; result.append(tup)
-#                     break
-#                 else:
-#                     for item in PAST_PREFIX:
-#                         if item in possed_token:
-#                             status = 'TP'
-#                             break
-#                         else:
-#                             status = ''
-#
-#         elif status == 'TP':
-#             for item in TIME_MORPHEMES:
-#                 if item in possed_token:
-#                     status = 'TPTW'; result.append(tup)
-#                     break
-#                 else:
-#                     status = ''
-#
-#     if status == 'PE' or 'TWTS' or 'TPTW':
-#         status = 'PAST'
-#         print status, ' '.join('%s %s %s' % (k, v, i) for k, v, i in result)
-#         return result
-#     else:
-#         return None
 
 
 def detect_time_in_sen(sen, temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_SUFFIX, temp_prefix=FUTURE_PREFIX):
