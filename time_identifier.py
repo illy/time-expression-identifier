@@ -61,7 +61,6 @@ PAST_NR = ['刚过去#NR']
 
 PAST_VV = ['昨天晚上#VV', '昨天上午#VV', '过去#VV 的#DEC', '去年同期#VV', '去年底#VV']
 
-
 PRESENT_NT = ['目前#NT', '当前#NT', '现在#NT', '如今#NT', '现时#NT', '此刻#NT', '同时#NT', '现阶段#NT', '现时#NT',
               '此时#NT', '当今#NT', '当下#NT', '眼下#NT', '时下#NT', '今时#NT', '现#NT', '此时#NT', '现今#NT',
               '同年#NT', '今夏#NT', '本季#NT', '当季#NT',
@@ -192,7 +191,7 @@ def detect_date(clause_tuples, ref_yr=current_y):
                 if state == 0:
                     status = 'HoldingMonth'
             else:
-                status = 'CURRENT'
+                status = 'PAST'
 
         elif status == 'HoldingMonth':
             y = cn_day.match(word)
@@ -201,9 +200,9 @@ def detect_date(clause_tuples, ref_yr=current_y):
                 matched_d = int(y.group(1))
                 state = current_d - matched_d
                 if state == 0:
-                    status = 'CURRENT'
+                    status = 'PAST'
             else:
-                status = 'CURRENT'
+                status = 'PAST'
 
         else:
             status = ''
@@ -223,14 +222,13 @@ def detect_date(clause_tuples, ref_yr=current_y):
 def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp_prefix=PAST_PREFIX, state='PAST'):
     status, result = '', []
 
-    for tup in clause:
-        token, pos, index = tup[0], tup[1], tup[2]
+    for token, pos, index in clause:
         possed_token = token + '#' + pos
 
         if status == '':
             for item in temp_phrases:
                 if item in possed_token:
-                    status = 'PE'; result.append(tup)
+                    status = 'PE'; result.append((token, pos, index))
                     break
             else:
                 for item in TIME_MORPHEMES:
@@ -248,7 +246,7 @@ def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp
         elif status == 'TW':
             for item in temp_suffix:
                 if item in possed_token:
-                    status = 'TWTS'; result.append(tup)
+                    status = 'TWTS'; result.append((token, pos, index))
                     break
                 else:
                     for item in temp_prefix:
@@ -261,7 +259,7 @@ def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp
         elif status == 'TP':
             for item in TIME_MORPHEMES:
                 if item in possed_token:
-                    status = 'TPTW'; result.append(tup)
+                    status = 'TPTW'; result.append((token, pos, index))
                     break
                 else:
                     status = ''
@@ -429,19 +427,19 @@ if __name__ == '__main__':
     gc.disable()
     a = now_str(hide_microseconds=False)
 
-    result = []
+    # result = []
     # raw_data = open('/Users/acepor/work/time/data/possed_news.txt', 'r')
-    raw_data = open('/Users/acepor/work/time/data/stf_result.txt', 'r')
+    # raw_data = open('/Users/acepor/work/time/data/stf_result.txt', 'r')
 
     # result = (past_identify(line) for line in raw_data)
     # for i in result:
     #     if i is not None:
     #         print i
 
-    for line in raw_data:
-        r = detect_time_in_sen(line, temp_phrases=PRESENT_PHRASES, temp_prefix=[], temp_suffix=[])
-        for i in r:
-            print i
+    # for line in raw_data:
+    #     r = detect_time_in_sen(line, temp_phrases=FUTURE_PHRASES, temp_prefix=[], temp_suffix=[])
+    #     for i in r:
+    #         print i
 
     SEN1 = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'), ('代表', 'VV'),
        ('着', 'AS'), ('2007年', 'NT'), ('苹果', 'NN'), ('推出', 'VV'), ('智能', 'NN'), ('手机', 'NN'), ('iPhone', 'NN'), ('以来', 'LC'),
@@ -489,9 +487,9 @@ if __name__ == '__main__':
     '目前，特斯拉电动汽车所需电池在美国加州弗里蒙特的工厂生产，但这家工厂无法满足特斯拉未来的生产需求。'
     '家 工厂 满足 特斯拉 未来 的 生产 需求'
 
-    # e, ne = calculate_index(SEN3, INDEX3)
-    # r1 = detect_time(e)
-    # r2 = detect_time(ne)
+    e, ne = calculate_index(SEN3, INDEX3)
+    r1 = detect_time(e)
+    r2 = detect_time(ne)
 
     b = now_str(hide_microseconds=False)
     print a,
