@@ -61,7 +61,16 @@ PAST_NR = ['刚过去#NR']
 
 PAST_VV = ['昨天晚上#VV', '昨天上午#VV', '过去#VV 的#DEC', '去年同期#VV', '去年底#VV']
 
-PAST_PHRASES = PAST_AD + PAST_CD + PAST_M + PAST_NN + PAST_NR + PAST_NT + PAST_VV
+
+PRESENT_NT = ['目前#NT', '当前#NT', '现在#NT', '如今#NT', '现时#NT', '此刻#NT', '同时#NT', '现阶段#NT', '现时#NT',
+              '此时#NT', '当今#NT', '当下#NT', '眼下#NT', '时下#NT', '今时#NT', '现#NT', '此时#NT', '现今#NT',
+              '同年#NT', '今夏#NT', '本季#NT', '当季#NT',
+              '本月#NT', '当月#NT', '同月#NT', '当月份#NT',
+              '本周#NT', '当周#NT', '本周末#NT',
+              '今晚#NT', '今日#NT', '今天#NT', '当天#NT', '今#NT', '即日#NT', '今早#NT', '当日#NT', '当晚#NT', '今晨#NT']
+PRESENT_NN = ['当下#NN', '现阶段#NN']
+
+PAST_PHRASES = PAST_AD + PAST_CD + PAST_M + PAST_NN + PAST_NR + PAST_NT + PAST_VV + PRESENT_NT + PRESENT_NN
 
 
 ########################################################################
@@ -86,7 +95,16 @@ FUTURE_NT = ['今后#NT', '日后#NT', '将来#NT']
 
 FUTURE_PHRASES = FUTURE_AD + FUTURE_NN + FUTURE_NT
 
+
 ########################################################################
+
+
+CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS', '除非#CS', '假如#CS', '要是#CS',
+                  '倘若#CS', '只有#CS', '若是#CS', '如#CS', '假如说#CS', '万一#CS', '假使#CS', '若说#CS']
+
+
+########################################################################
+
 
 def calculate_index(sen_tuple, event_index):
     event_list = []
@@ -197,23 +215,6 @@ def detect_date(clause_tuples, ref_yr=current_y):
 
     print status, 'tuple:', ''.join('%s, %s, %s; ' % (k, v, i) for k, v, i in matched_list)
     return status, matched_list
-
-
-########################################################################
-
-
-PRESENT_NT = ['目前#NT', '当前#NT', '现在#NT', '当时#NT', '如今#NT', '当代#NT', '现时#NT', '此刻#NT', '同时#NT', '现阶段#NT',
-              '此时#NT', '当今#NT', '当季#NT', '当下#NT', '眼下#NT', '时下#NT', '今时#NT', '现#NT', '现如今#NT', '此时#NT', '现今#NT',
-              '同年#NT', '今夏#NT', '本季#NT', '当季#NT',
-              '本月#NT', '当月#NT', '同月#NT', '该月份#NT', '当月份#NT',
-              '本周#NT', '当周#NT', '本周末#NT',
-              '今晚#NT', '今日#NT', '今天#NT', '当天#NT', '今#NT', '即日#NT', '今早#NT', '当日#NT', '当晚#NT', '今晨#NT']
-PRESENT_NN = ['当下#NN']
-
-
-
-CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS', '除非#CS', '假如#CS', '要是#CS',
-                  '倘若#CS', '只有#CS', '若是#CS', '如#CS', '假如说#CS', '万一#CS', '假使#CS', '若说#CS']
 
 
 ########################################################################
@@ -330,9 +331,6 @@ def detect_time_in_sen(sen, temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_SUFF
 ########################################################################
 
 
-
-
-
 # def SVO(li):  # S- V -O
 #         state = ''
 #         result = None
@@ -426,6 +424,7 @@ def detect_time_in_sen(sen, temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_SUFF
 
 ########################################################
 
+
 if __name__ == '__main__':
     gc.disable()
     a = now_str(hide_microseconds=False)
@@ -440,7 +439,7 @@ if __name__ == '__main__':
     #         print i
 
     for line in raw_data:
-        r = detect_time_in_sen(line)
+        r = detect_time_in_sen(line, temp_phrases=PRESENT_PHRASES, temp_prefix=[], temp_suffix=[])
         for i in r:
             print i
 
