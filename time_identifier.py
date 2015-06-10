@@ -158,7 +158,7 @@ def detect_date(clause_tuples, ref_yr=current_y):
     '''
 
     state = 0
-    matched_list = []
+    matched_tuple = []
     status = ''
 
     for token, pos, index in clause_tuples:
@@ -177,7 +177,7 @@ def detect_date(clause_tuples, ref_yr=current_y):
                         matched_y = m_year + 2000
 
                 if matched_y > 1900:
-                    matched_list.append((token, pos, index))
+                    matched_tuple = (token, pos, index)
                     state = current_y - matched_y
                     if state == 0:
                         status = 'HoldingYear'
@@ -185,7 +185,7 @@ def detect_date(clause_tuples, ref_yr=current_y):
         elif status == 'HoldingYear':
             y = cn_month.match(token)
             if y:
-                matched_list.append((token, pos, index))
+                matched_tuple = (token, pos, index)
                 matched_m = int(y.group(1))
                 state = current_m - matched_m
                 if state == 0:
@@ -196,7 +196,7 @@ def detect_date(clause_tuples, ref_yr=current_y):
         elif status == 'HoldingMonth':
             y = cn_day.match(token)
             if y:
-                matched_list.append((token, pos, index))
+                matched_tuple = (token, pos, index)
                 matched_d = int(y.group(1))
                 state = current_d - matched_d
                 if state == 0:
@@ -212,10 +212,16 @@ def detect_date(clause_tuples, ref_yr=current_y):
     elif state < 0:
         status = 'TODO'
 
-    print status, 'tuple:', ''.join('%s, %s, %s; ' % (k, v, i) for k, v, i in matched_list)
+    # print status, 'tuple:', ''.join('%s, %s, %s; ' % (k, v, i) for k, v, i in matched_tuple)
 
-    if status == 'DONE' or 'TODO':
-        return status, matched_list
+    if status == 'HoldingMonth' or 'HoldingYear':
+        status = -1
+    if status == 'DONE':
+        status = -1
+    if status == 'TODO':
+        status = 1
+    if status == 1 or -1:
+        return (status, ) + matched_tuple
     else:
         return None
 
@@ -243,12 +249,15 @@ def detect_date_(token, pos, index, status, matched_tuple, ref_yr=current_y):
 
     if status == 'HoldingYear':
         y = cn_month.match(token)
+        print '!!'
         if y:
             matched_tuple = (token, pos, index)
             matched_m = int(y.group(1))
             state = current_m - matched_m
+            print '!'
             if state == 0:
                 status = 'HoldingMonth'
+                print '!!'
         else:
             status = 'CURRENT'
 
@@ -273,8 +282,12 @@ def detect_date_(token, pos, index, status, matched_tuple, ref_yr=current_y):
 
     # print status, 'tuple:', ''.join('%s, %s, %s; ' % (k, v, i) for k, v, i in matched_list)
     if status == 'CURRENT':
-        status = 'DONE'
-    if status == 'DONE' or 'TODO':
+        status = -1
+    if status == 'DONE':
+        status = -1
+    if status == 'TODO':
+        status = 1
+    if status == 1 or -1:
         if matched_tuple:
             return (status,) + matched_tuple
     else:
@@ -283,8 +296,8 @@ def detect_date_(token, pos, index, status, matched_tuple, ref_yr=current_y):
 ########################################################################
 
 
-def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp_prefix=PAST_PREFIX, state='PAST'):
-    status, matched_list = '', []
+def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp_prefix=PAST_PREFIX, state=0):
+    status, matched_tuple = '', ()
 
     for token, pos, index in clause:
         possed_token = token + '#' + pos
@@ -292,7 +305,7 @@ def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp
         if status == '':
             for item in temp_phrases:
                 if item in possed_token:
-                    status = 'PE'; matched_list.append((token, pos, index))
+                    status = 'PE'; matched_tuple = (token, pos, index)
                     break
             else:
                 for item in TIME_MORPHEMES:
@@ -310,7 +323,7 @@ def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp
         elif status == 'TW':
             for item in temp_suffix:
                 if item in possed_token:
-                    status = 'TWTS'; matched_list.append((token, pos, index))
+                    status = 'TWTS'; matched_tuple = (token, pos, index)
                     break
                 else:
                     for item in temp_prefix:
@@ -323,15 +336,15 @@ def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp
         elif status == 'TP':
             for item in TIME_MORPHEMES:
                 if item in possed_token:
-                    status = 'TPTW'; matched_list.append((token, pos, index))
+                    status = 'TPTW'; matched_tuple = (token, pos, index)
                     break
                 else:
                     status = ''
 
     if status == 'PE' or 'TWTS' or 'TPTW':
         status = state
-        print status, ' '.join('%s %s %s' % (k, v, i) for k, v, i in matched_list)
-        return status, matched_list
+        # print status, ' '.join('%s %s %s' % (k, v, i) for k, v, i in matched_tuple)
+        return (status, ) + matched_tuple
     else:
         return None
 
@@ -386,8 +399,23 @@ def detect_time_(token, pos, index, possed_token, status, matched_tuple, temp_ph
 
 ########################################################################
 
-
 def detect_overall(clause_tuples):
+    '''
+    '''
+
+    status, matched_tuple, result = '', (), []
+
+    result.append(detect_date(clause_tuples, ref_yr=current_y))
+    result.append(detect_time(clause_tuples,
+                temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp_prefix=PAST_PREFIX, state=-1))
+    result.append(detect_time(clause_tuples,
+                 temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_PREFIX, temp_prefix=FUTURE_SUFFIX, state=1))
+
+    # print set([a for a in result if a is not None])
+    return set([a for a in result if a is not None if len(a) > 1])
+
+
+def detect_overall_(clause_tuples):
     '''
     '''
 
@@ -401,11 +429,12 @@ def detect_overall(clause_tuples):
         result.append(detect_time_(token, pos, index, possed_token, status, matched_tuple,
                      temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_PREFIX, temp_prefix=FUTURE_SUFFIX, state='TODO'))
 
+    # print set([a for a in result if a is not None])
     return set([a for a in result if a is not None])
 
 
-
 ########################################################################
+
 
 def detect_time_in_sen(sen, temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_SUFFIX, temp_prefix=FUTURE_PREFIX):
     status, result = '', []
@@ -456,6 +485,27 @@ def detect_time_in_sen(sen, temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_SUFF
         return result
     else:
         return None
+
+
+########################################################################
+
+
+def evaluate_status(time_set, event_tuple):
+    time_score = 0
+    index_list = [int(i[2]) for i in event_tuple]
+    b_min, b_max = min(index_list), max(index_list)
+
+    for j in time_set:
+
+        if b_min < int(j[3]) < b_max:
+            time_score += j[0]
+        elif int(j[3]) < b_min:
+            time_score += j[0] / 2.0
+        else:
+            time_score = 0
+
+    print time_score
+    return time_score
 
 
 ########################################################################
@@ -593,8 +643,9 @@ if __name__ == '__main__':
 
     '很多 WhatsApp 用户 通 过 款 应用 获取 新闻 资讯'
 
-    SEN3 = [('在', 'P'), ('2015年', 'NT'), ('的', 'DEG'), ('一', 'CD'), ('轮', 'M'), ('融资', 'NN'), ('中', 'LC'), ('，', 'PU'),
-            ('Etsy', 'NR'), ('的', 'DEG'), ('估值', 'NN'), ('已', 'AD'), ('突破', 'VV'), ('6亿', 'CD'), ('美元', 'M'), ('。', 'PU')]
+    SEN3 = [('在', 'P'), ('2012年', 'NT'), ('的', 'DEG'), ('一', 'CD'), ('轮', 'M'), ('融资', 'NN'), ('中', 'LC'), ('，', 'PU'),
+            ('Etsy', 'NR'), ('的', 'DEG'), ('估值', 'NN'), ('已', 'AD'), ('突破', 'VV'), ('6亿', 'CD'), ('美元', 'M'), ('。', 'PU'),
+            ('2015年', 'NT'), ('六月', 'NT')]
 
     INDEX3 = [8, 10, 12, 13, 14]
 
@@ -620,8 +671,19 @@ if __name__ == '__main__':
     '家 工厂 满足 特斯拉 未来 的 生产 需求'
 
     e, ne = calculate_index(SEN3, INDEX3)
-    print ''.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(e))
-    print ''.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(ne))
+    print [i[2] for i in e]
+    print [i[2] for i in ne]
+    re_e = detect_overall(e)
+    print re_e
+    re_ne = detect_overall(ne)
+    print re_ne
+    evaluate_status(re_e, e)
+    evaluate_status(re_ne, ne)
+    print '; '.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(e))
+    print '; '.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(ne))
+
+    detect_date(e)
+    detect_date(ne)
 
     b = now_str(hide_microseconds=False)
     print a,
