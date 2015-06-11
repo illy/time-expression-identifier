@@ -106,10 +106,9 @@ CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS
 
 
 def calculate_index(sen_tuple, event_index):
-    event_list = []
     full_list = []
     tuple_index = 0
-    event_set = set()  # build a set to filter the possibly duplicate clauses
+    event_set = set()  # build a set to filter the possibly duplicated clauses
     non_event_clause = []
     for i in sen_tuple:
         tuple_index += 1
@@ -123,8 +122,8 @@ def calculate_index(sen_tuple, event_index):
                 if tuple_index == item[2]:
                     event_set.update(clause)
 
-    event_clause = sorted(event_set, key=itemgetter(2))
-    event_clause_index = map(int, ['%d' % i for k, v, i in event_clause])
+    event_clause = sorted(event_set, key=itemgetter(2))  # the generated set might lose the order
+    event_clause_index = map(int, ['%d' % i for k, v, i in event_clause])  # generate an index of th event clause
 
     non_event_list = ['%s %s %s' % (k, v, i) for k, v, i in full_list if i not in event_clause_index]
     for i in non_event_list:
@@ -132,10 +131,9 @@ def calculate_index(sen_tuple, event_index):
 
     # print 'event clause:', ' '.join('(\'%s\', \'%s\', %s),' % (k, v, i) for k, v, i in event_clause)
     # print 'non event clause:', ' '.join('(\'%s\', \'%s\', %s),' % (k, v, i) for k, v, i in non_event_clause)
-    #
+    
     # for i in event_index:
     #     event_list.append([x for x in sen_tuple[i]])
-    # print 'event list:', ' '.join('%s %s;' % (k, v,) for k, v in event_list)
     # print ' '.join('%s#%s %s;' % (k, v, i) for k, v, i in full_list)
 
     return event_clause, non_event_clause
@@ -157,16 +155,13 @@ def detect_date(clause_tuples, ref_yr=current_y):
     This function only deals with the expressions starting with explicit year.
     '''
 
-    state = 0
-    matched_tuple = []
-    status = ''
+    state, matched_tuple, status = 0, [], ''
 
     for token, pos, index in clause_tuples:
         if status == '':
-
-            y = cn_year.match(token)
-            if y:
-                matched_y = int(y.group(1))
+            matched_time     = cn_year.match(token)
+            if matched_time:
+                matched_y = int(matched_time.group(1))
                 if matched_y < 100:  # if the year only contains two digits
                     m_year = matched_y
                     min_year = m_year + 1900
@@ -183,10 +178,10 @@ def detect_date(clause_tuples, ref_yr=current_y):
                         status = 'HoldingYear'
 
         elif status == 'HoldingYear':
-            y = cn_month.match(token)
-            if y:
+            matched_time = cn_month.match(token)
+            if matched_time:
                 matched_tuple = (token, pos, index)
-                matched_m = int(y.group(1))
+                matched_m = int(matched_time.group(1))
                 state = current_m - matched_m
                 if state == 0:
                     status = 'HoldingMonth'
@@ -194,10 +189,10 @@ def detect_date(clause_tuples, ref_yr=current_y):
                 status = 'CURRENT'
 
         elif status == 'HoldingMonth':
-            y = cn_day.match(token)
-            if y:
+            matched_time = cn_day.match(token)
+            if matched_time:
                 matched_tuple = (token, pos, index)
-                matched_d = int(y.group(1))
+                matched_d = int(matched_time.group(1))
                 state = current_d - matched_d
                 if state == 0:
                     status = 'CURRENT'
@@ -208,18 +203,14 @@ def detect_date(clause_tuples, ref_yr=current_y):
             status = ''
 
     if state > 0:
-        status = 'DONE'
+        status = -1
     elif state < 0:
-        status = 'TODO'
+        status = 1
 
     # print status, 'tuple:', ''.join('%s, %s, %s; ' % (k, v, i) for k, v, i in matched_tuple)
 
     if status == 'HoldingMonth' or 'HoldingYear':
         status = -1
-    if status == 'DONE':
-        status = -1
-    if status == 'TODO':
-        status = 1
     if status == 1 or -1:
         return (status, ) + matched_tuple
     else:
@@ -276,36 +267,33 @@ def detect_date_(token, pos, index, status, matched_tuple, ref_yr=current_y):
         status = ''
 
     if state > 0:
-        status = 'DONE'
+        status = -1
     elif state < 0:
-        status = 'TODO'
+        status = 1
 
     # print status, 'tuple:', ''.join('%s, %s, %s; ' % (k, v, i) for k, v, i in matched_list)
     if status == 'CURRENT':
         status = -1
-    if status == 'DONE':
-        status = -1
-    if status == 'TODO':
-        status = 1
     if status == 1 or -1:
         if matched_tuple:
             return (status,) + matched_tuple
     else:
         return None
 
+
 ########################################################################
 
 
-def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp_prefix=PAST_PREFIX, state=0):
+def detect_time(clause, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_PREFIX, state=0):
     status, matched_tuple = '', ()
 
     for token, pos, index in clause:
         possed_token = token + '#' + pos
 
         if status == '':
-            for item in temp_phrases:
+            for item in t_phrases:
                 if item in possed_token:
-                    status = 'PE'; matched_tuple = (token, pos, index)
+                    status, matched_tuple = 'PE', (token, pos, index)
                     break
             else:
                 for item in TIME_MORPHEMES:
@@ -313,7 +301,7 @@ def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp
                         status = 'TW'
                         break
                     else:
-                        for item in temp_prefix:
+                        for item in prefix:
                             if item in possed_token:
                                 status = 'TP'
                                 break
@@ -321,12 +309,12 @@ def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp
                                 status = ''
 
         elif status == 'TW':
-            for item in temp_suffix:
+            for item in suffix:
                 if item in possed_token:
-                    status = 'TWTS'; matched_tuple = (token, pos, index)
+                    status, matched_tuple = 'TWTS', (token, pos, index)
                     break
                 else:
-                    for item in temp_prefix:
+                    for item in prefix:
                         if item in possed_token:
                             status = 'TP'
                             break
@@ -336,7 +324,7 @@ def detect_time(clause, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp
         elif status == 'TP':
             for item in TIME_MORPHEMES:
                 if item in possed_token:
-                    status = 'TPTW'; matched_tuple = (token, pos, index)
+                    status, matched_tuple = 'TPTW', (token, pos, index)
                     break
                 else:
                     status = ''
@@ -400,24 +388,19 @@ def detect_time_(token, pos, index, possed_token, status, matched_tuple, temp_ph
 ########################################################################
 
 def detect_overall(clause_tuples):
-    '''
-    '''
 
     status, matched_tuple, result = '', (), []
 
     result.append(detect_date(clause_tuples, ref_yr=current_y))
-    result.append(detect_time(clause_tuples,
-                temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp_prefix=PAST_PREFIX, state=-1))
-    result.append(detect_time(clause_tuples,
-                 temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_PREFIX, temp_prefix=FUTURE_SUFFIX, state=1))
+    result.append(detect_time(clause_tuples, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_PREFIX, state=-1))
+    # -1 indicates a past event
+    result.append(detect_time(clause_tuples, t_phrases=FUTURE_PHRASES, suffix=FUTURE_PREFIX, prefix=FUTURE_SUFFIX, state=1))
+    # 1 indicates a future event
 
-    # print set([a for a in result if a is not None])
     return set([a for a in result if a is not None if len(a) > 1])
 
 
 def detect_overall_(clause_tuples):
-    '''
-    '''
 
     status, matched_tuple, result = '', (), []
 
@@ -429,7 +412,6 @@ def detect_overall_(clause_tuples):
         result.append(detect_time_(token, pos, index, possed_token, status, matched_tuple,
                      temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_PREFIX, temp_prefix=FUTURE_SUFFIX, state='TODO'))
 
-    # print set([a for a in result if a is not None])
     return set([a for a in result if a is not None])
 
 
@@ -492,12 +474,11 @@ def detect_time_in_sen(sen, temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_SUFF
 
 def evaluate_status(time_set, event_tuple):
     time_score = 0
-    index_list = [int(i[2]) for i in event_tuple]
+    index_list = [int(i[2]) for i in event_tuple]  # each tuple has three elements
     b_min, b_max = min(index_list), max(index_list)
 
     for j in time_set:
-
-        if b_min < int(j[3]) < b_max:
+        if b_min < int(j[3]) < b_max:  # each tuple has four elements
             time_score += j[0]
         elif int(j[3]) < b_min:
             time_score += j[0] / 2.0
