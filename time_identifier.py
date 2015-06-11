@@ -475,16 +475,16 @@ def detect_time_in_sen(sen, temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_SUFF
 def evaluate_status(time_set, event_tuple):
     time_score = 0
     index_list = [int(i[2]) for i in event_tuple]  # each tuple has three elements
-    b_min, b_max = min(index_list), max(index_list)
+    b_min, b_max = min(index_list)-1, max(index_list)+1
 
     for j in time_set:
         if b_min < int(j[3]) < b_max:  # each tuple has four elements
             time_score += j[0]
-        elif int(j[3]) < b_min:
+        elif time_score == 0 and int(j[3]) < b_min:
+            # If the event clause does not contain any expression, or the expressions are controversial.
             time_score += j[0] / 2.0
         else:
             time_score = 0
-
     print time_score
     return time_score
 
@@ -652,16 +652,18 @@ if __name__ == '__main__':
     '家 工厂 满足 特斯拉 未来 的 生产 需求'
 
     e, ne = calculate_index(SEN3, INDEX3)
-    print [i[2] for i in e]
+    print 'e', [i[2] for i in e]
     print [i[2] for i in ne]
     re_e = detect_overall(e)
     print re_e
     re_ne = detect_overall(ne)
     print re_ne
-    evaluate_status(re_e, e)
-    evaluate_status(re_ne, ne)
+
     print '; '.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(e))
     print '; '.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(ne))
+
+    evaluate_status(re_e, e)
+    evaluate_status(re_ne, e)
 
     detect_date(e)
     detect_date(ne)
