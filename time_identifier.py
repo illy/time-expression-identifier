@@ -236,70 +236,6 @@ def detect_date(clause_tuples, ref_yr=current_y):
     return (status, ) + matched_tuple if status == 1 or status == -1 else None
 
 
-def detect_date_(token, pos, index, status, matched_tuple, ref_yr=current_y):
-    state = 0
-    if status == '':
-        y = cn_year.match(token)
-        if y:
-            matched_y = int(y.group(1))
-            if matched_y < 100:  # if the year only contains two digits
-                m_year = matched_y
-                min_year = m_year + 1900
-                max_year = m_year + 2000
-                if max_year - ref_yr > ref_yr - min_year:
-                    matched_y = m_year + 1900  # convert the year to 4 digits
-                else:
-                    matched_y = m_year + 2000
-
-            if matched_y > 1900:
-                matched_tuple = (token, pos, index)
-                state = current_y - matched_y
-                if state == 0:
-                    status = 'HoldingYear'
-
-    if status == 'HoldingYear':
-        y = cn_month.match(token)
-        print '!!'
-        if y:
-            matched_tuple = (token, pos, index)
-            matched_m = int(y.group(1))
-            state = current_m - matched_m
-            print '!'
-            if state == 0:
-                status = 'HoldingMonth'
-                print '!!'
-        else:
-            status = 'CURRENT'
-
-    elif status == 'HoldingMonth':
-        y = cn_day.match(token)
-        if y:
-            matched_tuple = (token, pos, index)
-            matched_d = int(y.group(1))
-            state = current_d - matched_d
-            if state == 0:
-                status = 'CURRENT'
-        else:
-            status = 'CURRENT'
-
-    else:
-        status = ''
-
-    if state > 0:
-        status = -1
-    elif state < 0:
-        status = 1
-
-    # print status, 'tuple:', ''.join('%s, %s, %s; ' % (k, v, i) for k, v, i in matched_list)
-    if status == 'CURRENT':
-        status = -1
-    if status == 1 or -1:
-        if matched_tuple:
-            return (status,) + matched_tuple
-    else:
-        return None
-
-
 ########################################################################
 
 
@@ -356,54 +292,6 @@ def detect_time(clause, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_
         return None
 
 
-def detect_time_(token, pos, index, possed_token, status, matched_tuple, temp_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_PREFIX, state='PAST'):
-    if status == '':
-        for item in temp_phrases:
-            if item in possed_token:
-                status = 'PE'; matched_tuple = (token, pos, index)
-                break
-        else:
-            for item in TIME_MORPHEMES:
-                if item in possed_token:
-                    status = 'TW'
-                    break
-                else:
-                    for item in prefix:
-                        if item in possed_token:
-                            status = 'TP'
-                            break
-                        else:
-                            status = ''
-
-    elif status == 'TW':
-        for item in suffix:
-            if item in possed_token:
-                status = 'TWTS'; matched_tuple = (token, pos, index)
-                break
-            else:
-                for item in prefix:
-                    if item in possed_token:
-                        status = 'TP'
-                        break
-                    else:
-                        status = ''
-
-    elif status == 'TP':
-        for item in TIME_MORPHEMES:
-            if item in possed_token:
-                status = 'TPTW'; matched_tuple = (token, pos, index)
-                break
-            else:
-                status = ''
-
-    if status == 'PE' or 'TWTS' or 'TPTW':
-        status = state
-        if matched_tuple:
-            return (status, ) + matched_tuple
-    else:
-        return None
-
-
 ########################################################################
 
 
@@ -419,21 +307,6 @@ def detect_overall(clause_tuples):
     # 1 indicates a future event
 
     return set([a for a in result if a is not None if len(a) > 1])
-
-
-def detect_overall_(clause_tuples):
-
-    status, matched_tuple, result = '', (), []
-
-    for token, pos, index in clause_tuples:
-        possed_token = token + '#' + pos
-        result.append(detect_date_(token, pos, index, status, matched_tuple, ref_yr=current_y))
-        result.append(detect_time_(token, pos, index, possed_token, status, matched_tuple,
-                    temp_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_PREFIX, state='DONE'))
-        result.append(detect_time_(token, pos, index, possed_token, status, matched_tuple,
-                     temp_phrases=FUTURE_PHRASES, suffix=FUTURE_PREFIX, prefix=FUTURE_SUFFIX, state='TODO'))
-
-    return set([a for a in result if a is not None])
 
 
 ########################################################################
@@ -520,115 +393,10 @@ if __name__ == '__main__':
     gc.disable()
     a = now_str(hide_microseconds=False)
 
-    # result = []
-    # raw_data = open('/Users/acepor/work/time/data/possed_news.txt', 'r')
-    # raw_data = open('/Users/acepor/work/time/data/stf_result.txt', 'r')
-
-    # result = (past_identify(line) for line in raw_data)
-    # for i in result:
-    #     if i is not None:
-    #         print i
-
-    # for line in raw_data:
-    #     r = detect_time_in_sen(line, temp_phrases=FUTURE_PHRASES, temp_prefix=[], temp_suffix=[])
-    #     for i in r:
-    #         print i
-
-    SEN1 = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'),
-            ('代表', 'VV'), ('着', 'AS'), ('2007年', 'NT'), ('苹果', 'NN'), ('推出', 'VV'), ('智能', 'NN'), ('手机', 'NN'),
-            ('iPhone', 'NN'), ('以来', 'LC'), ('最大', 'JJ'), ('赌注', 'NN'), ('，', 'PU'), ('一旦', 'CS'), ('苹果', 'NN'),
-            ('于', 'P'), ('3月', 'NT'), ('9日', 'NT'), ('正式', 'AD'), ('公布', 'VV'), ('Apple', 'NN'), ('Watch', 'NN'),
-            ('的', 'DEG'), ('定价', 'NN'), ('等', 'ETC'), ('细节', 'NN'), ('后', 'LC'), ('，', 'PU'), ('苹果', 'NN'),
-            ('将', 'AD'), ('变成', 'VV'), ('完全', 'AD'), ('不同', 'VA'), ('的', 'DEC'), ('公司', 'NN'), ('。', 'PU')]
-
-    INDEX1 = [20, 21, 22, 23, 25, 26, 27, 28, 29]
-
-    SEN2 = [('根据', 'P'), ('2014年', 'NT'), ('Reuters', 'NR'), ('Institute', 'NN'), ('调查', 'NN'), ('，', 'PU'),
-            ('在', 'P'), ('西班牙', 'NR'), ('、', 'PU'), ('意大利', 'NR'), ('和', 'CC'), ('巴西', 'NR'), ('，', 'PU'),
-            ('很多', 'CD'), ('WhatsApp', 'NR'), ('用户', 'NN'), ('通过', 'P'), ('这', 'DT'), ('款', 'M'), ('应用', 'NN'),
-            ('来', 'MSP'), ('获取', 'VV'), ('新闻', 'NN'), ('资讯', 'NN'), ('。', 'PU')]
-
-    INDEX2 = [13, 14, 15, 16, 18, 19, 21, 22, 23]
-
-    '根据2014年Reuters Institute调查，在西班牙、意大利和巴西，很多WhatsApp用户通过这款应用来获取新闻资讯。'
-
-    '很多 WhatsApp 用户 通 过 款 应用 获取 新闻 资讯'
-
-    SEN3 = [('在', 'AD'), ('2012年', 'NT'), ('的', 'DEG'), ('一', 'CD'), ('轮', 'M'), ('融资', 'NN'), ('中', 'LC'),
-            ('，', 'PU'), ('Etsy', 'NR'), ('的', 'DEG'), ('估值', 'NN'), ('已', 'AD'), ('突破', 'VV'), ('6亿', 'CD'),
-            ('美元', 'M'), ('。', 'PU'), ('2015年', 'NT'), ('六月', 'NT')]
-
-    INDEX3 = [8, 10, 12, 13, 14]
-
-    'Etsy 估值 突破 6 亿 美元'
-
-    SEN4 = [('没有', 'AD'), ('出现', 'VV'), ('预料', 'NN'), ('中', 'LC'), ('的', 'DEG'), ('问题', 'NN'), ('对于', 'P'),
-            ('苹果', 'NN'), ('来说', 'LC'), ('当然', 'AD'), ('是', 'VC'), ('好事', 'NN'), ('，', 'PU'), ('因为', 'P'),
-            ('iAd', 'NN'), ('从来', 'AD'), ('都', 'AD'), ('没', 'AD'), ('能', 'VV'), ('追上', 'VV'), ('谷歌', 'NR'),
-            ('的', 'DEG'), ('广告', 'NN'), ('业务', 'NN'), ('。', 'PU')]
-
-    INDEX4 = [14, 18, 19, 20, 21, 22, 23]
-
-    '没有出现预料中的问题对于苹果来说当然是好事，因为iAd从来都没能追上谷歌的广告业务。'
-    'iAd 能 追上 谷歌 的 广告 业务'
-
-    SEN5 = [('目前', 'NT'), ('，', 'PU'), ('特斯拉', 'NR'), ('电动', 'JJ'), ('汽车', 'NN'), ('所需', 'NN'), ('电池', 'NN'),
-            ('在', 'P'), ('美国', 'NR'), ('加州', 'NR'), ('弗里蒙特', 'NR'), ('的', 'DEG'), ('工厂', 'NN'), ('生产', 'NN'),
-            ('，', 'PU'), ('但', 'AD'), ('这', 'DT'), ('家', 'M'), ('工厂', 'NN'), ('无法', 'AD'), ('满足', 'VV'),
-            ('特斯拉', 'NR'), ('未来', 'NT'), ('的', 'DEG'), ('生产', 'NN'), ('需求', 'NN'), ('。', 'PU')]
-
-    INDEX5 = [17, 18, 20, 21, 22, 23, 24, 25]
-
-    '目前，特斯拉电动汽车所需电池在美国加州弗里蒙特的工厂生产，但这家工厂无法满足特斯拉未来的生产需求。'
-    '家 工厂 满足 特斯拉 未来 的 生产 需求'
-
-    SEN6 = [('特斯拉', 'NN'), ('预计', 'VV'), ('，', 'PU'), ('到', 'P'), ('2020年', 'NN'), ('完全', 'AD'),
-            ('完工', 'VV'), ('后', 'LC'), ('，', 'PU'),  ('这', 'DT'), ('家', 'M'), ('工厂', 'NN'),
-            ('可', ''), ('生产', 'VV'), ('50万', 'CD'), ('辆', 'M'), ('电动', 'JJ'), ('汽车', ''),
-            ('所需', ''), ('电池', 'NN'), ('。', 'PU')]
-    RES6 = ['这', '家', '工厂', '可', '生产', '50万', '辆', '电动', '汽车', '所需', '电池']
-
-    SEN7 = [('目前', 'NN'), ('，', 'PU'), ('特斯拉', 'NN'), ('电动', 'JJ'), ('汽车', ''), ('所需', ''), ('电池', 'NN'),
-            ('在', 'P'), ('美国', ''), ('加州', ''), ('弗里蒙特', 'NN'), ('的', 'DEG'), ('工厂', ''), ('生产', 'NN'),
-            ('，', 'PU'), ('但', 'AD'), ('这', 'DT'), ('家', 'M'), ('工厂', 'NN'), ('无法', 'AD'), ('满足', 'VV'),
-            ('特斯拉', ''), ('未来', 'NN'), ('的', 'DEG'), ('生产', ''), ('需求', 'NN'), ('。', 'PU')]
-
-    RES7 = ['这', '家', '工厂', '无法', '满足', '特斯拉', '未来', '的', '生产', '需求']
-
-
-    SEN2 = [('根据', 'P'), ('2014年', 'NT'), ('Reuters', 'NR'), ('Institute', 'NN'), ('调查', 'NN'), ('，', 'PU'),
-                ('在', 'P'), ('西班牙', 'NR'), ('、', 'PU'), ('意大利', 'NR'), ('和', 'CC'), ('巴西', 'NR'), ('，', 'PU'),
-                ('很多', 'CD'), ('WhatsApp', 'NR'), ('用户', 'NN'), ('通过', 'P'), ('这', 'DT'), ('款', 'M'), ('应用', 'NN'),
-                ('来', 'MSP'), ('获取', 'VV'), ('新闻', 'NN'), ('资讯', 'NN'), ('。', 'PU')]
-
-    RESULT2 = ['很多', 'WhatsApp', '用户', '通过', '这', '款', '应用', '来', '获取', '新闻', '资讯']
-
-    # e, ne = recover_index(SEN7, RES7)
-    # re_e = detect_overall(e)
-    # re_ne = detect_overall(ne)
-    #
-    # print '; '.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(e))
-    # print '; '.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(ne))
-    #
-    # evaluate_status(re_e, e)
-    # evaluate_status(re_ne, e)
-    #
-    # detect_date(e)
-    # detect_date(ne)
-    #
-    # b = now_str(hide_microseconds=False)
-    # print a,
-    # print b
-    #
-    # print ' '.join('%s %s %s;' %(k, v, i) for k, v, i in e)
-    # print ' '.join('%s %s %s;' %(k, v, i) for k, v, i in ne)
-
     data = read_pickle('/Users/acepor/work/time/data/events_result')
     outf = open('/Users/acepor/work/time/data/output_full1.txt','w')
     for line in data:
         sen, event = line
-        # print 'sen', sen, '\n'
-        # print 'event', event
         e, ne = recover_index(sen, event)
         re_e = detect_overall(e)
         re_ne = detect_overall(ne)
@@ -648,10 +416,3 @@ if __name__ == '__main__':
         outf.write(ss.encode('utf-8'))
     outf.flush()
     outf.close()
-
-        # res_ne = evaluate_status(re_ne, e, 'ne')
-        # print 'e', ' '.join(k[0] for (k, v, i) in e), ' '.join(str(i) for (k, v, i) in e)
-        # print 'ne', ' '.join(k[0] for (k, v, i) in ne), ' '.join(str(i) for (k, v, i) in ne), '\n'
-
-
-        # print '; '.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(ne))
