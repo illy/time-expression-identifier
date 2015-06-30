@@ -8,6 +8,7 @@ from my_tools import now_str
 from operator import itemgetter
 from datetime import datetime
 import re
+from pickle import load
 
 
 ########################################################################
@@ -46,7 +47,8 @@ PAST_NN = ['此前#NN', '之前#NN', '从前#NN', '先前#NN', '以往#NN', '往
 
 PAST_M = ['年来#M']
 
-PAST_NT = ['之前#NT', '从前#NT', '以往#NT', '最初#NT', '当初#NT', '不久#NT', '先前#NT', '此前#NT', '以前#NT', '最近#NT', '当初#AD',
+PAST_NT = ['之前#NT', '从前#NT', '以往#NT', '最初#NT', '当初#NT', '不久#NT', '先前#NT', '此前#NT', '以前#NT', '最近#NT',
+           '当初#AD', '以往#NT',
            '年初#NT', '前年#NT', '上年#NT', '去年#NT', '幼年#NT', '往年#NT', '早年#NT', '近些年#NT', '前些年#NT', '近两年#NT',
            '近半年#NT', '近年#NT', '年内#NT', '早年间#NT', '年来#NT', '年前#NT', '年末#NT', '当年#NT', '历年#NT', '前几年#NT',
            '近些年#NT', '早些年#NT', '前半年#NT', '早年#NT', '前些天#NT',
@@ -67,9 +69,11 @@ PRESENT_NT = ['目前#NT', '当前#NT', '现在#NT', '如今#NT', '现时#NT', '
               '本月#NT', '当月#NT', '同月#NT', '当月份#NT',
               '本周#NT', '当周#NT', '本周末#NT',
               '今晚#NT', '今日#NT', '今天#NT', '当天#NT', '今#NT', '即日#NT', '今早#NT', '当日#NT', '当晚#NT', '今晨#NT']
-PRESENT_NN = ['当下#NN', '现阶段#NN']
+PRESENT_NN = ['当下#NN', '现阶段#NN', '目前#NN']
 
-PAST_PHRASES = PAST_AD + PAST_CD + PAST_M + PAST_NN + PAST_NR + PAST_NT + PAST_VV + PRESENT_NT + PRESENT_NN
+PRESENT_AD = ['正在#AD', '正#AD']
+
+PAST_PHRASES = PAST_AD + PAST_CD + PAST_M + PAST_NN + PAST_NR + PAST_NT + PAST_VV + PRESENT_NT + PRESENT_NN + PRESENT_AD
 
 
 ########################################################################
@@ -90,8 +94,6 @@ FUTURE_AD = ['此后#AD', '稍后#AD', '而后#AD', '日后#AD', '事后#AD', '�
 
 FUTURE_NN = ['会后#NN', '下周#NN', '下个月#NN', '将会#NN']
 
-FUTURE_NT = ['今后#NT', '日后#NT', '将来#NT']
-
 FUTURE_PHRASES = FUTURE_AD + FUTURE_NN + FUTURE_NT
 
 
@@ -105,11 +107,17 @@ CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS
 ########################################################################
 
 
+def read_pickle(filename):
+    data_list = []
+    data = load(open(filename, 'r'))
+    for line in data:
+        data_list.append(line)
+    return data_list
+
+
 def calculate_index(sen_tuple, event_index):
-    full_list = []
-    tuple_index = 0
-    event_set = set()  # build a set to filter the possibly duplicated clauses
-    non_event_clause = []
+    full_list, non_event_clause = [], []
+    tuple_index, event_set = 0, set()  # build a set to filter the possibly duplicated clauses
     for i in sen_tuple:
         tuple_index += 1
         full_list.append(i + (tuple_index, ))
@@ -128,13 +136,26 @@ def calculate_index(sen_tuple, event_index):
     non_event_list = ['%s %s %s' % (k, v, i) for k, v, i in full_list if i not in event_clause_index]
     for i in non_event_list:
         non_event_clause.append(tuple(i.split(' ')))
+    return event_clause, non_event_clause
 
-    # print 'event clause:', ' '.join('(\'%s\', \'%s\', %s),' % (k, v, i) for k, v, i in event_clause)
-    # print 'non event clause:', ' '.join('(\'%s\', \'%s\', %s),' % (k, v, i) for k, v, i in non_event_clause)
-    
-    # for i in event_index:
-    #     event_list.append([x for x in sen_tuple[i]])
-    # print ' '.join('%s#%s %s;' % (k, v, i) for k, v, i in full_list)
+
+def recover_index(sen_list, result_tup):
+    full_sen, non_event_clause = [], []
+    tuple_index, event_set = 0, set()  # build a set to filter the possibly duplicated clauses
+    for i in sen_list:
+        tuple_index += 1
+        full_sen.append(i + (tuple_index, ))
+    clauses = [list(group) for k, group in itertools.groupby(full_sen, lambda x: x[0][0] == u'\uff0c') if not k]
+
+    for clause in clauses:
+        for word in result_tup:
+            for item in clause:
+                if word == item[0][0]:
+                    event_set.update((item,))
+
+    event_clause = sorted(event_set, key=itemgetter(2))
+    non_event_list = [(k, v, i) for k, v, i in full_sen if k[0] not in result_tup]
+    non_event_clause = sorted(non_event_list, key=itemgetter(2))
 
     return event_clause, non_event_clause
 
@@ -142,9 +163,9 @@ def calculate_index(sen_tuple, event_index):
 ########################################################################
 
 
-cn_year = re.compile('(\d+)年')
-cn_month = re.compile('(\d+)月')
-cn_day = re.compile('(\d+)日')
+cn_year = re.compile(u'(\d+)年')
+cn_month = re.compile(u'(\d+)月')
+cn_day = re.compile(u'(\d+)日')
 current_y = int(str(datetime.now()).split(' ')[0].split('-')[0])
 current_m = int(str(datetime.now()).split(' ')[0].split('-')[1])
 current_d = int(str(datetime.now()).split(' ')[0].split('-')[2])
@@ -152,14 +173,15 @@ current_d = int(str(datetime.now()).split(' ')[0].split('-')[2])
 
 def detect_date(clause_tuples, ref_yr=current_y):
     '''
-    This function only deals with the expressions starting with explicit year.
+    This function only deals with the expressions starting with explicit temporal expressions.
     '''
 
-    state, matched_tuple, status = 0, [], ''
+    state, matched_tuple, status = 0, (), ''
 
     for token, pos, index in clause_tuples:
+        token = token[0]
         if status == '':
-            matched_time     = cn_year.match(token)
+            matched_time = cn_year.match(token)
             if matched_time:
                 matched_y = int(matched_time.group(1))
                 if matched_y < 100:  # if the year only contains two digits
@@ -206,15 +228,12 @@ def detect_date(clause_tuples, ref_yr=current_y):
         status = -1
     elif state < 0:
         status = 1
+    # print status, matched_tuple
 
-    # print status, 'tuple:', ''.join('%s, %s, %s; ' % (k, v, i) for k, v, i in matched_tuple)
-
-    if status == 'HoldingMonth' or 'HoldingYear':
+    if status == 'HoldingMonth' or status == 'HoldingYear' or status == 'CURRENT':
         status = -1
-    if status == 1 or -1:
-        return (status, ) + matched_tuple
-    else:
-        return None
+
+    return (status, ) + matched_tuple if status == 1 or status == -1 else None
 
 
 def detect_date_(token, pos, index, status, matched_tuple, ref_yr=current_y):
@@ -288,6 +307,7 @@ def detect_time(clause, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_
     status, matched_tuple = '', ()
 
     for token, pos, index in clause:
+        token, pos = token[0].encode('utf-8'), pos.encode('utf-8')
         possed_token = token + '#' + pos
 
         if status == '':
@@ -329,15 +349,14 @@ def detect_time(clause, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_
                 else:
                     status = ''
 
-    if status == 'PE' or 'TWTS' or 'TPTW':
+    if status == 'PE' or status == 'TWTS' or status == 'TPTW':
         status = state
-        # print status, ' '.join('%s %s %s' % (k, v, i) for k, v, i in matched_tuple)
         return (status, ) + matched_tuple
     else:
         return None
 
 
-def detect_time_(token, pos, index, possed_token, status, matched_tuple, temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp_prefix=PAST_PREFIX, state='PAST'):
+def detect_time_(token, pos, index, possed_token, status, matched_tuple, temp_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_PREFIX, state='PAST'):
     if status == '':
         for item in temp_phrases:
             if item in possed_token:
@@ -349,7 +368,7 @@ def detect_time_(token, pos, index, possed_token, status, matched_tuple, temp_ph
                     status = 'TW'
                     break
                 else:
-                    for item in temp_prefix:
+                    for item in prefix:
                         if item in possed_token:
                             status = 'TP'
                             break
@@ -357,12 +376,12 @@ def detect_time_(token, pos, index, possed_token, status, matched_tuple, temp_ph
                             status = ''
 
     elif status == 'TW':
-        for item in temp_suffix:
+        for item in suffix:
             if item in possed_token:
                 status = 'TWTS'; matched_tuple = (token, pos, index)
                 break
             else:
-                for item in temp_prefix:
+                for item in prefix:
                     if item in possed_token:
                         status = 'TP'
                         break
@@ -387,14 +406,16 @@ def detect_time_(token, pos, index, possed_token, status, matched_tuple, temp_ph
 
 ########################################################################
 
+
 def detect_overall(clause_tuples):
 
     status, matched_tuple, result = '', (), []
 
     result.append(detect_date(clause_tuples, ref_yr=current_y))
-    result.append(detect_time(clause_tuples, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_PREFIX, state=-1))
     # -1 indicates a past event
     result.append(detect_time(clause_tuples, t_phrases=FUTURE_PHRASES, suffix=FUTURE_PREFIX, prefix=FUTURE_SUFFIX, state=1))
+    result.append(detect_time(clause_tuples, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_PREFIX, state=-1))
+
     # 1 indicates a future event
 
     return set([a for a in result if a is not None if len(a) > 1])
@@ -408,9 +429,9 @@ def detect_overall_(clause_tuples):
         possed_token = token + '#' + pos
         result.append(detect_date_(token, pos, index, status, matched_tuple, ref_yr=current_y))
         result.append(detect_time_(token, pos, index, possed_token, status, matched_tuple,
-                    temp_phrases=PAST_PHRASES, temp_suffix=PAST_SUFFIX, temp_prefix=PAST_PREFIX, state='DONE'))
+                    temp_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_PREFIX, state='DONE'))
         result.append(detect_time_(token, pos, index, possed_token, status, matched_tuple,
-                     temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_PREFIX, temp_prefix=FUTURE_SUFFIX, state='TODO'))
+                     temp_phrases=FUTURE_PHRASES, suffix=FUTURE_PREFIX, prefix=FUTURE_SUFFIX, state='TODO'))
 
     return set([a for a in result if a is not None])
 
@@ -472,8 +493,8 @@ def detect_time_in_sen(sen, temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_SUFF
 ########################################################################
 
 
-def evaluate_status(time_set, event_tuple):
-    time_score = 0
+def evaluate_status(time_set, event_tuple, type='e'):
+    time_score, distance = 0, 0
     index_list = [int(i[2]) for i in event_tuple]  # each tuple has three elements
     b_min, b_max = min(index_list)-1, max(index_list)+1
 
@@ -483,107 +504,16 @@ def evaluate_status(time_set, event_tuple):
         elif time_score == 0 and int(j[3]) < b_min:
             # If the event clause does not contain any expression, or the expressions are controversial.
             time_score += j[0] / 2.0
+            distance += (b_min - int(j[3]))
+
         else:
             time_score = 0
-    print time_score
-    return time_score
+    pattern = [b for (a, b, c, d) in time_set]
+
+    return time_score, distance, pattern
 
 
 ########################################################################
-
-
-# def SVO(li):  # S- V -O
-#         state = ''
-#         result = None
-#         for pos, i, word in li:
-#             if state == '':
-#                 ws = set(word)
-#                 if ws.intersection(cores):
-#                     state, result = 'S', ("".join(word), )
-#             elif state == 'S':
-#                 if pos == 'v':
-#                     state = 'V'
-#                     result += ("".join(word), )
-#                 else:
-#                     state = ""
-#             elif state == "V":
-#                 ws = set(word)
-#                 if pos == 'n' and ws.intersection(cores):
-#                     state = 'O'
-#                     result += ("".join(word),)
-#                 else:
-#                     state = ""
-#         if state == 'O':
-#             return result
-#         else:
-#             return None
-
-
-# def check_string(string, pattern):
-#     state, result = 0, ""
-#     end = len(pattern)
-#     for ch in string:
-#         st = pattern[state]
-#         if ch == st:
-#             state += 1
-#             result += ch
-#             if state == end:
-#                 break
-#         else:
-#             state, result = 0, ""
-#     if state == len(pattern):
-#         return result
-#     else:
-#         return None
-
-
-# def FSA(sequence, pattern):
-#     '''
-#     pattern 序列中每个元素是一个条件函数。
-#     条件函数默认接受多个参数（单参数需要封装为tuple／list）
-#     条件函数默认返回s，r两个值，s 是整数，指向状态的跳转目标， r 是处理当前item的函数。r==None 时不加入
-#     '''
-#     state, result = 0, ()
-#     end = len(pattern)
-#     for item in sequence:
-#         st = pattern[state]
-#         s, r = st(*item)
-#         state = s
-#         if r: result += (r(item),)
-#         if state == 0: result = ()
-#         if state == end: break
-#     return result if state == end else None
-#
-#
-# def merge_word_tuple(item):
-#     p,i,w = item
-#     return ''.join(w)
-#
-# def SVO(li, cores):
-#     def _S(pos, i, word):
-#         return (1 if cores.intersection(set(word)) else 0, merge_word_tuple)
-#     def _V(pos, i, word):
-#         return (2 if pos == 'v' else 0, merge_word_tuple)
-#     def _O(pos, i, word):
-#         return (3 if pos=='n' and cores.intersection(set(word)) else 0, merge_word_tuple)
-#     return FSA(li, (_S, _V, _O))
-# 0
-#
-# def SPOVO(li, cores):
-#     def _S(pos, i, word):
-#         return (1 if cores.intersection(set(word)) else 0, merge_word_tuple)
-#     def _P(pos, i, word):
-#         return (2 if pos=='p' else 0, None)
-#     def _PO(pos, i, word):
-#         return (3 if pos=='n' else 0, None)
-#     def _V(pos, i, word):
-#         return (4 if pos == 'v' else 0, merge_word_tuple)
-#     def _VO(pos, i, word):
-#         return (5 if pos == 'n' else 0, merge_word_tuple)
-#     return FSA(li, (_S, _P, _PO, _V, _VO))
-
-
-########################################################
 
 
 if __name__ == '__main__':
@@ -604,19 +534,19 @@ if __name__ == '__main__':
     #     for i in r:
     #         print i
 
-    SEN1 = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'), ('代表', 'VV'),
-       ('着', 'AS'), ('2007年', 'NT'), ('苹果', 'NN'), ('推出', 'VV'), ('智能', 'NN'), ('手机', 'NN'), ('iPhone', 'NN'), ('以来', 'LC'),
-       ('最大', 'JJ'), ('赌注', 'NN'), ('，', 'PU'), ('一旦', 'CS'), ('苹果', 'NN'), ('于', 'P'), ('3月', 'NT'), ('9日', 'NT'),
-       ('正式', 'AD'), ('公布', 'VV'), ('Apple', 'NN'), ('Watch', 'NN'), ('的', 'DEG'), ('定价', 'NN'), ('等', 'ETC'), ('细节', 'NN'),
-       ('后', 'LC'), ('，', 'PU'), ('苹果', 'NN'), ('将', 'AD'), ('变成', 'VV'), ('完全', 'AD'), ('不同', 'VA'), ('的', 'DEC'),
-       ('公司', 'NN'), ('。', 'PU')]
+    SEN1 = [('3月', 'NT'), ('7日', 'NT'), ('报道', 'VV'), ('智能', 'NN'), ('手表', 'NN'), ('Apple', 'NN'), ('Watch', 'NN'),
+            ('代表', 'VV'), ('着', 'AS'), ('2007年', 'NT'), ('苹果', 'NN'), ('推出', 'VV'), ('智能', 'NN'), ('手机', 'NN'),
+            ('iPhone', 'NN'), ('以来', 'LC'), ('最大', 'JJ'), ('赌注', 'NN'), ('，', 'PU'), ('一旦', 'CS'), ('苹果', 'NN'),
+            ('于', 'P'), ('3月', 'NT'), ('9日', 'NT'), ('正式', 'AD'), ('公布', 'VV'), ('Apple', 'NN'), ('Watch', 'NN'),
+            ('的', 'DEG'), ('定价', 'NN'), ('等', 'ETC'), ('细节', 'NN'), ('后', 'LC'), ('，', 'PU'), ('苹果', 'NN'),
+            ('将', 'AD'), ('变成', 'VV'), ('完全', 'AD'), ('不同', 'VA'), ('的', 'DEC'), ('公司', 'NN'), ('。', 'PU')]
 
     INDEX1 = [20, 21, 22, 23, 25, 26, 27, 28, 29]
 
-    SEN2 = [('根据', 'P'), ('2014年', 'NT'), ('Reuters', 'NR'), ('Institute', 'NN'), ('调查', 'NN'), ('，', 'PU'), ('在', 'P'),
-            ('西班牙', 'NR'), ('、', 'PU'), ('意大利', 'NR'), ('和', 'CC'), ('巴西', 'NR'), ('，', 'PU'), ('很多', 'CD'), ('WhatsApp', 'NR'),
-            ('用户', 'NN'), ('通过', 'P'), ('这', 'DT'), ('款', 'M'), ('应用', 'NN'), ('来', 'MSP'), ('获取', 'VV'), ('新闻', 'NN'),
-            ('资讯', 'NN'), ('。', 'PU')]
+    SEN2 = [('根据', 'P'), ('2014年', 'NT'), ('Reuters', 'NR'), ('Institute', 'NN'), ('调查', 'NN'), ('，', 'PU'),
+            ('在', 'P'), ('西班牙', 'NR'), ('、', 'PU'), ('意大利', 'NR'), ('和', 'CC'), ('巴西', 'NR'), ('，', 'PU'),
+            ('很多', 'CD'), ('WhatsApp', 'NR'), ('用户', 'NN'), ('通过', 'P'), ('这', 'DT'), ('款', 'M'), ('应用', 'NN'),
+            ('来', 'MSP'), ('获取', 'VV'), ('新闻', 'NN'), ('资讯', 'NN'), ('。', 'PU')]
 
     INDEX2 = [13, 14, 15, 16, 18, 19, 21, 22, 23]
 
@@ -624,50 +554,104 @@ if __name__ == '__main__':
 
     '很多 WhatsApp 用户 通 过 款 应用 获取 新闻 资讯'
 
-    SEN3 = [('在', 'P'), ('2012年', 'NT'), ('的', 'DEG'), ('一', 'CD'), ('轮', 'M'), ('融资', 'NN'), ('中', 'LC'), ('，', 'PU'),
-            ('Etsy', 'NR'), ('的', 'DEG'), ('估值', 'NN'), ('已', 'AD'), ('突破', 'VV'), ('6亿', 'CD'), ('美元', 'M'), ('。', 'PU'),
-            ('2015年', 'NT'), ('六月', 'NT')]
+    SEN3 = [('在', 'AD'), ('2012年', 'NT'), ('的', 'DEG'), ('一', 'CD'), ('轮', 'M'), ('融资', 'NN'), ('中', 'LC'),
+            ('，', 'PU'), ('Etsy', 'NR'), ('的', 'DEG'), ('估值', 'NN'), ('已', 'AD'), ('突破', 'VV'), ('6亿', 'CD'),
+            ('美元', 'M'), ('。', 'PU'), ('2015年', 'NT'), ('六月', 'NT')]
 
     INDEX3 = [8, 10, 12, 13, 14]
 
     'Etsy 估值 突破 6 亿 美元'
 
-    SEN4 = [('没有', 'AD'), ('出现', 'VV'), ('预料', 'NN'), ('中', 'LC'), ('的', 'DEG'), ('问题', 'NN'), ('对于', 'P'), ('苹果', 'NN'),
-            ('来说', 'LC'), ('当然', 'AD'), ('是', 'VC'), ('好事', 'NN'), ('，', 'PU'), ('因为', 'P'), ('iAd', 'NN'), ('从来', 'AD'),
-            ('都', 'AD'), ('没', 'AD'), ('能', 'VV'), ('追上', 'VV'), ('谷歌', 'NR'), ('的', 'DEG'), ('广告', 'NN'), ('业务', 'NN'), ('。', 'PU')]
+    SEN4 = [('没有', 'AD'), ('出现', 'VV'), ('预料', 'NN'), ('中', 'LC'), ('的', 'DEG'), ('问题', 'NN'), ('对于', 'P'),
+            ('苹果', 'NN'), ('来说', 'LC'), ('当然', 'AD'), ('是', 'VC'), ('好事', 'NN'), ('，', 'PU'), ('因为', 'P'),
+            ('iAd', 'NN'), ('从来', 'AD'), ('都', 'AD'), ('没', 'AD'), ('能', 'VV'), ('追上', 'VV'), ('谷歌', 'NR'),
+            ('的', 'DEG'), ('广告', 'NN'), ('业务', 'NN'), ('。', 'PU')]
 
     INDEX4 = [14, 18, 19, 20, 21, 22, 23]
 
     '没有出现预料中的问题对于苹果来说当然是好事，因为iAd从来都没能追上谷歌的广告业务。'
     'iAd 能 追上 谷歌 的 广告 业务'
 
-    SEN5 = [('目前', 'NT'), ('，', 'PU'), ('特斯拉', 'NR'), ('电动', 'JJ'), ('汽车', 'NN'), ('所需', 'NN'), ('电池', 'NN'), ('在', 'P'),
-            ('美国', 'NR'), ('加州', 'NR'), ('弗里蒙特', 'NR'), ('的', 'DEG'), ('工厂', 'NN'), ('生产', 'NN'), ('，', 'PU'), ('但', 'AD'),
-            ('这', 'DT'), ('家', 'M'), ('工厂', 'NN'), ('无法', 'AD'), ('满足', 'VV'), ('特斯拉', 'NR'), ('未来', 'NT'), ('的', 'DEG'),
-            ('生产', 'NN'), ('需求', 'NN'), ('。', 'PU'), ('昨天上午', 'VV')]
+    SEN5 = [('目前', 'NT'), ('，', 'PU'), ('特斯拉', 'NR'), ('电动', 'JJ'), ('汽车', 'NN'), ('所需', 'NN'), ('电池', 'NN'),
+            ('在', 'P'), ('美国', 'NR'), ('加州', 'NR'), ('弗里蒙特', 'NR'), ('的', 'DEG'), ('工厂', 'NN'), ('生产', 'NN'),
+            ('，', 'PU'), ('但', 'AD'), ('这', 'DT'), ('家', 'M'), ('工厂', 'NN'), ('无法', 'AD'), ('满足', 'VV'),
+            ('特斯拉', 'NR'), ('未来', 'NT'), ('的', 'DEG'), ('生产', 'NN'), ('需求', 'NN'), ('。', 'PU')]
 
     INDEX5 = [17, 18, 20, 21, 22, 23, 24, 25]
 
     '目前，特斯拉电动汽车所需电池在美国加州弗里蒙特的工厂生产，但这家工厂无法满足特斯拉未来的生产需求。'
     '家 工厂 满足 特斯拉 未来 的 生产 需求'
 
-    e, ne = calculate_index(SEN3, INDEX3)
-    print 'e', [i[2] for i in e]
-    print [i[2] for i in ne]
-    re_e = detect_overall(e)
-    print re_e
-    re_ne = detect_overall(ne)
-    print re_ne
+    SEN6 = [('特斯拉', 'NN'), ('预计', 'VV'), ('，', 'PU'), ('到', 'P'), ('2020年', 'NN'), ('完全', 'AD'),
+            ('完工', 'VV'), ('后', 'LC'), ('，', 'PU'),  ('这', 'DT'), ('家', 'M'), ('工厂', 'NN'),
+            ('可', ''), ('生产', 'VV'), ('50万', 'CD'), ('辆', 'M'), ('电动', 'JJ'), ('汽车', ''),
+            ('所需', ''), ('电池', 'NN'), ('。', 'PU')]
+    RES6 = ['这', '家', '工厂', '可', '生产', '50万', '辆', '电动', '汽车', '所需', '电池']
 
-    print '; '.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(e))
-    print '; '.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(ne))
+    SEN7 = [('目前', 'NN'), ('，', 'PU'), ('特斯拉', 'NN'), ('电动', 'JJ'), ('汽车', ''), ('所需', ''), ('电池', 'NN'),
+            ('在', 'P'), ('美国', ''), ('加州', ''), ('弗里蒙特', 'NN'), ('的', 'DEG'), ('工厂', ''), ('生产', 'NN'),
+            ('，', 'PU'), ('但', 'AD'), ('这', 'DT'), ('家', 'M'), ('工厂', 'NN'), ('无法', 'AD'), ('满足', 'VV'),
+            ('特斯拉', ''), ('未来', 'NN'), ('的', 'DEG'), ('生产', ''), ('需求', 'NN'), ('。', 'PU')]
 
-    evaluate_status(re_e, e)
-    evaluate_status(re_ne, e)
+    RES7 = ['这', '家', '工厂', '无法', '满足', '特斯拉', '未来', '的', '生产', '需求']
 
-    detect_date(e)
-    detect_date(ne)
 
-    b = now_str(hide_microseconds=False)
-    print a,
-    print b
+    SEN2 = [('根据', 'P'), ('2014年', 'NT'), ('Reuters', 'NR'), ('Institute', 'NN'), ('调查', 'NN'), ('，', 'PU'),
+                ('在', 'P'), ('西班牙', 'NR'), ('、', 'PU'), ('意大利', 'NR'), ('和', 'CC'), ('巴西', 'NR'), ('，', 'PU'),
+                ('很多', 'CD'), ('WhatsApp', 'NR'), ('用户', 'NN'), ('通过', 'P'), ('这', 'DT'), ('款', 'M'), ('应用', 'NN'),
+                ('来', 'MSP'), ('获取', 'VV'), ('新闻', 'NN'), ('资讯', 'NN'), ('。', 'PU')]
+
+    RESULT2 = ['很多', 'WhatsApp', '用户', '通过', '这', '款', '应用', '来', '获取', '新闻', '资讯']
+
+    # e, ne = recover_index(SEN7, RES7)
+    # re_e = detect_overall(e)
+    # re_ne = detect_overall(ne)
+    #
+    # print '; '.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(e))
+    # print '; '.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(ne))
+    #
+    # evaluate_status(re_e, e)
+    # evaluate_status(re_ne, e)
+    #
+    # detect_date(e)
+    # detect_date(ne)
+    #
+    # b = now_str(hide_microseconds=False)
+    # print a,
+    # print b
+    #
+    # print ' '.join('%s %s %s;' %(k, v, i) for k, v, i in e)
+    # print ' '.join('%s %s %s;' %(k, v, i) for k, v, i in ne)
+
+    data = read_pickle('/Users/acepor/work/time/data/events_result')
+    outf = open('/Users/acepor/work/time/data/output_full1.txt','w')
+    for line in data:
+        sen, event = line
+        # print 'sen', sen, '\n'
+        # print 'event', event
+        e, ne = recover_index(sen, event)
+        re_e = detect_overall(e)
+        re_ne = detect_overall(ne)
+        time_score1, distance1, p1 = evaluate_status(re_e, e, 'e')
+        time_score2, distance2, p2 = evaluate_status(re_ne, e, 'e')
+
+        total_score = time_score1 + time_score2
+
+        ss = 'original: ' + ' '.join(' '.join(a) for a, b in sen) + '\n\n'
+        s1 = 'score ' + str(total_score)  + '\n' + ' '.join(p1)
+        s2 = ' '.join(k for k in event) + '\n'
+
+        # print [i.encode('utf-8') for i in p1 if type(i) == 'utf-8']
+
+        outf.write(s1)
+        outf.write(s2.encode('utf-8'))
+        outf.write(ss.encode('utf-8'))
+    outf.flush()
+    outf.close()
+
+        # res_ne = evaluate_status(re_ne, e, 'ne')
+        # print 'e', ' '.join(k[0] for (k, v, i) in e), ' '.join(str(i) for (k, v, i) in e)
+        # print 'ne', ' '.join(k[0] for (k, v, i) in ne), ' '.join(str(i) for (k, v, i) in ne), '\n'
+
+
+        # print '; '.join('%s %s %s %s' %(a, b, c, d) for a, b, c, d in detect_overall(ne))
