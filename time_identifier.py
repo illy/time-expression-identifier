@@ -116,40 +116,39 @@ def read_pickle(filename):
 
 
 def recover_index(sen_list, result_tup):
-    comma_index = [0]
-    event_clause, non_event_clause = [], []
+    comma_index, event_clause, non_event_clause = [0], [], []
     full_list = [item+(ind,) for ind, item in enumerate(sen_list)]
 
     for item, tag, index in full_list:
-        if item[0][0] == u'\uff0c':
+        if item[0][0] == u'\uff0c':  # u'\uff0c' stands for the full-width comma
             comma_index.append(index)
-    comma_index.extend([full_list[-1][2]])
+    comma_index.extend([full_list[-1][2]])  # capture all commas in the sentence
 
     i, j = 0, 0
     result, result_size = [], 0
-    while i<len(sen_list):
+    while k < len(sen_list):
         item = sen_list[i][0]
         l = len(item)
         if item == result_tup[j:j+l]:
             j += l
-            result.append((sen_list[i] + (i,)))
+            result.append((sen_list[k] + (k,)))  # extract the matched tuple
             result_size += l
         else:
             result, result_size, j = [], 0, 0
         i += 1
         if result_size == len(result_tup): break
 
-    min_comma, max_comma = result[0][2], result[- 1][2]
+    min_comma, max_comma = result[0][2], result[-1][2]  # capture the boundaries of the event tuple
 
-    i = 0
-    while i<len(comma_index)-1:
-        left_comma, right_comma = comma_index[i], comma_index[i+1]
+    k = 0
+    while k < len(comma_index)-1:
+        left_comma, right_comma = comma_index[k], comma_index[k+1]  # set the boundaries according to the comma list
         if left_comma <= min_comma <= right_comma:
-            event_clause = full_list[left_comma+1: right_comma]
+            event_clause = full_list[left_comma+1: right_comma]  # exclude the left comma
             non_event_clause = full_list[0:left_comma]
             non_event_clause.extend(full_list[right_comma+1:])
             break
-        i += 1
+        k += 1
 
     return event_clause, non_event_clause
 
