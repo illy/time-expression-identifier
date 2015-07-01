@@ -115,41 +115,17 @@ def read_pickle(filename):
     return data_list
 
 
-def calculate_index(sen_tuple, event_index):
-    full_list, non_event_clause = [], []
-    tuple_index, event_set = 0, set()  # build a set to filter the possibly duplicated clauses
-    for i in sen_tuple:
-        tuple_index += 1
-        full_list.append(i + (tuple_index, ))
-    clauses = [list(group) for k, group in itertools.groupby(full_list, lambda x: x[0] == '，') if not k]
-    # use the comma as the delimiter, and use itertools.groupby to chain the tuples
-
-    for clause in clauses:
-        for item in clause:
-            for tuple_index in event_index:
-                if tuple_index == item[2]:
-                    event_set.update(clause)
-
-    event_clause = sorted(event_set, key=itemgetter(2))  # the generated set might lose the order
-    event_clause_index = map(int, ['%d' % i for k, v, i in event_clause])  # generate an index of th event clause
-
-    non_event_list = ['%s %s %s' % (k, v, i) for k, v, i in full_list if i not in event_clause_index]
-    for i in non_event_list:
-        non_event_clause.append(tuple(i.split(' ')))
-    return event_clause, non_event_clause
-
-
 def recover_index(sen_list, result_tup):
-    i, j = 0, 0
-    result, result_size, full_list, comma_index = [], 0, [], [0,]
+    comma_index = [0]
     event_clause, non_event_clause = [], []
-    full_list = [(item, ind) for ind, item in enumerate(sen_list)]
+    full_list = [item+(ind,) for ind, item in enumerate(sen_list)]
 
-    for item in full_list:
-        if item[0][0][0] == u'\uff0c':
-            comma_index.append(item[1])
-    comma_index.extend([full_list[-1][1]])
+    for item, tag, index in full_list:
+        if item[0][0] == u'\uff0c':
+            comma_index.append(index)
+    comma_index.extend([full_list[-1][2]])
 
+    i, j = 0, 0
     result, result_size = [], 0
     while i<len(sen_list):
         item = sen_list[i][0]
@@ -163,13 +139,17 @@ def recover_index(sen_list, result_tup):
         i += 1
         if result_size == len(result_tup): break
 
-    min_comma, max_comma = result[0][2], result[len(result) - 1][2]
+    min_comma, max_comma = result[0][2], result[- 1][2]
 
-    for i in comma_index:
-        if i <= min_comma:
-            event_clause = full_list[min_comma: max_comma]
-            non_event_clause = full_list[0:min_comma]
-            non_event_clause.extend(full_list[max_comma:])
+    i = 0
+    while i<len(comma_index)-1:
+        left_comma, right_comma = comma_index[i], comma_index[i+1]
+        if left_comma <= min_comma <= right_comma:
+            event_clause = full_list[left_comma+1: right_comma]
+            non_event_clause = full_list[0:left_comma]
+            non_event_clause.extend(full_list[right_comma+1:])
+            break
+        i += 1
 
     return event_clause, non_event_clause
 
@@ -405,57 +385,59 @@ if __name__ == '__main__':
     gc.disable()
     a = now_str(hide_microseconds=False)
 
-    data = [[[((u'BI', u'\u4e2d\u6587'), 'NN'), ((u'\u7ad9',), 'VV'), ((u'3\u6708', u'7\u65e5'), 'NN'), ((u'\u62a5\u9053',), 'VV'),
-             ((u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch'), 'NN'), ((u'\u4ee3\u8868',), 'VV'), ((u'\u7740',), u'AS'),
-             ((u'2007\u5e74', u'\u82f9\u679c'), 'NN'), ((u'\u63a8\u51fa',), 'VV'), ((u'\u667a\u80fd', u'\u624b\u673a', u'iPhone'), 'NN'),
-             ((u'\u4ee5\u6765',), u'LC'), ((u'\u6700\u5927',), u'JJ'), ((u'\u8d4c\u6ce8',), 'NN'), ((u'\uff0c',), u'PU'),
-             ((u'\u4e00\u65e6',), u'CS'), ((u'\u82f9\u679c',), 'NN'), ((u'\u4e8e',), u'P'), ((u'3\u6708', u'9\u65e5'), 'NN'),
-             ((u'\u6b63\u5f0f',), u'AD'), ((u'\u516c\u5e03',), 'VV'), ((u'Apple', u'Watch'), 'NN'), ((u'\u7684',), u'DEG'),
-             ((u'\u5b9a\u4ef7',), 'NN'), ((u'\u7b49',), u'ETC'), ((u'\u7ec6\u8282',), 'NN'), ((u'\u540e',), u'LC'), ((u'\uff0c',), u'PU'),
-             ((u'\u82f9\u679c',), 'NN'), ((u'\u5c06',), u'AD'), ((u'\u53d8\u6210',), 'VV'), ((u'\u5b8c\u5168',), u'AD'),
-             ((u'\u4e0d\u540c',), 'VV'), ((u'\u7684',), u'DEC'), ((u'\u516c\u53f8',), 'NN'), ((u'\u3002',), u'PU')],
-                (u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch', u'\u4ee3\u8868', u'\u7740', u'2007\u5e74', u'\u82f9\u679c',
-                u'\u63a8\u51fa', u'\u667a\u80fd', u'\u624b\u673a', u'iPhone', u'\u4ee5\u6765', u'\u6700\u5927', u'\u8d4c\u6ce8')],
-            [[((u'BI', u'\u4e2d\u6587'), 'NN'), ((u'\u7ad9',), 'VV'), ((u'3\u6708', u'7\u65e5'), 'NN'), ((u'\u62a5\u9053',), 'VV'),
-             ((u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch'), 'NN'), ((u'\u4ee3\u8868',), 'VV'), ((u'\u7740',), u'AS'),
-             ((u'2007\u5e74', u'\u82f9\u679c'), 'NN'), ((u'\u63a8\u51fa',), 'VV'), ((u'\u667a\u80fd', u'\u624b\u673a', u'iPhone'), 'NN'),
-             ((u'\u4ee5\u6765',), u'LC'), ((u'\u6700\u5927',), u'JJ'), ((u'\u8d4c\u6ce8',), 'NN'), ((u'\uff0c',), u'PU'),
-             ((u'\u4e00\u65e6',), u'CS'), ((u'\u82f9\u679c',), 'NN'), ((u'\u4e8e',), u'P'), ((u'3\u6708', u'9\u65e5'), 'NN'),
-             ((u'\u6b63\u5f0f',), u'AD'), ((u'\u516c\u5e03',), 'VV'), ((u'Apple', u'Watch'), 'NN'), ((u'\u7684',), u'DEG'),
-             ((u'\u5b9a\u4ef7',), 'NN'), ((u'\u7b49',), u'ETC'), ((u'\u7ec6\u8282',), 'NN'), ((u'\u540e',), u'LC'), ((u'\uff0c',), u'PU'),
-             ((u'\u82f9\u679c',), 'NN'), ((u'\u5c06',), u'AD'), ((u'\u53d8\u6210',), 'VV'), ((u'\u5b8c\u5168',), u'AD'),
-             ((u'\u4e0d\u540c',), 'VV'), ((u'\u7684',), u'DEC'), ((u'\u516c\u53f8',), 'NN'), ((u'\u3002',), u'PU')],
-            (u'\u82f9\u679c', u'\u4e8e', u'3\u6708', u'9\u65e5', u'\u6b63\u5f0f', u'\u516c\u5e03', u'Apple', u'Watch',
-             u'\u7684', u'\u5b9a\u4ef7', u'\u7b49', u'\u7ec6\u8282', u'\u540e')],
-            [[((u'Apple', u'Watch', u'\u53d1\u5e03\u4f1a'), 'NN'), ((u'\u5c06',), u'AD'), ((u'\u5c55\u793a',), 'VV'),
-             ((u'\u4e00',), u'CD'), ((u'\u4e2a',), u'M'), ((u'\u6ea2\u4ef7', u'\u5927\u4f17', u'\u5e02\u573a', u'\u6280\u672f', u'\u54c1\u724c'), 'NN'),
-             ((u'\u5982\u4f55',), u'AD'), ((u'\u62e5\u62b1', u'\u5962\u534e'), 'VV'), ((u'\uff0c',), u'PU'), ((u'\u540c\u65f6',), u'AD'),
-             ((u'\u53c8',), u'AD'), ((u'\u4e0d',), u'AD'), ((u'\u4f1a', u'\u758f\u8fdc'), 'VV'), ((u'\u5176',), u'PN'),
-             ((u'\u7528\u6237', u'\u7fa4\u4f53'), 'NN'), ((u'\u3002',), u'PU')],
-            (u'Apple', u'Watch', u'\u53d1\u5e03\u4f1a', u'\u5c06', u'\u5c55\u793a', u'\u4e00', u'\u4e2a', u'\u6ea2\u4ef7',
-             u'\u5927\u4f17', u'\u5e02\u573a', u'\u6280\u672f', u'\u54c1\u724c', u'\u5982\u4f55', u'\u62e5\u62b1', u'\u5962\u534e')]]
+    # data = [[[((u'BI', u'\u4e2d\u6587'), 'NN'), ((u'\u7ad9',), 'VV'), ((u'3\u6708', u'7\u65e5'), 'NN'), ((u'\u62a5\u9053',), 'VV'),
+    #          ((u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch'), 'NN'), ((u'\u4ee3\u8868',), 'VV'), ((u'\u7740',), u'AS'),
+    #          ((u'2007\u5e74', u'\u82f9\u679c'), 'NN'), ((u'\u63a8\u51fa',), 'VV'), ((u'\u667a\u80fd', u'\u624b\u673a', u'iPhone'), 'NN'),
+    #          ((u'\u4ee5\u6765',), u'LC'), ((u'\u6700\u5927',), u'JJ'), ((u'\u8d4c\u6ce8',), 'NN'), ((u'\uff0c',), u'PU'),
+    #          ((u'\u4e00\u65e6',), u'CS'), ((u'\u82f9\u679c',), 'NN'), ((u'\u4e8e',), u'P'), ((u'3\u6708', u'9\u65e5'), 'NN'),
+    #          ((u'\u6b63\u5f0f',), u'AD'), ((u'\u516c\u5e03',), 'VV'), ((u'Apple', u'Watch'), 'NN'), ((u'\u7684',), u'DEG'),
+    #          ((u'\u5b9a\u4ef7',), 'NN'), ((u'\u7b49',), u'ETC'), ((u'\u7ec6\u8282',), 'NN'), ((u'\u540e',), u'LC'), ((u'\uff0c',), u'PU'),
+    #          ((u'\u82f9\u679c',), 'NN'), ((u'\u5c06',), u'AD'), ((u'\u53d8\u6210',), 'VV'), ((u'\u5b8c\u5168',), u'AD'),
+    #          ((u'\u4e0d\u540c',), 'VV'), ((u'\u7684',), u'DEC'), ((u'\u516c\u53f8',), 'NN'), ((u'\u3002',), u'PU')],
+    #             (u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch', u'\u4ee3\u8868', u'\u7740', u'2007\u5e74', u'\u82f9\u679c',
+    #             u'\u63a8\u51fa', u'\u667a\u80fd', u'\u624b\u673a', u'iPhone', u'\u4ee5\u6765', u'\u6700\u5927', u'\u8d4c\u6ce8')],
+    #         [[((u'BI', u'\u4e2d\u6587'), 'NN'), ((u'\u7ad9',), 'VV'), ((u'3\u6708', u'7\u65e5'), 'NN'), ((u'\u62a5\u9053',), 'VV'),
+    #          ((u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch'), 'NN'), ((u'\u4ee3\u8868',), 'VV'), ((u'\u7740',), u'AS'),
+    #          ((u'2007\u5e74', u'\u82f9\u679c'), 'NN'), ((u'\u63a8\u51fa',), 'VV'), ((u'\u667a\u80fd', u'\u624b\u673a', u'iPhone'), 'NN'),
+    #          ((u'\u4ee5\u6765',), u'LC'), ((u'\u6700\u5927',), u'JJ'), ((u'\u8d4c\u6ce8',), 'NN'), ((u'\uff0c',), u'PU'),
+    #          ((u'\u4e00\u65e6',), u'CS'), ((u'\u82f9\u679c',), 'NN'), ((u'\u4e8e',), u'P'), ((u'3\u6708', u'9\u65e5'), 'NN'),
+    #          ((u'\u6b63\u5f0f',), u'AD'), ((u'\u516c\u5e03',), 'VV'), ((u'Apple', u'Watch'), 'NN'), ((u'\u7684',), u'DEG'),
+    #          ((u'\u5b9a\u4ef7',), 'NN'), ((u'\u7b49',), u'ETC'), ((u'\u7ec6\u8282',), 'NN'), ((u'\u540e',), u'LC'), ((u'\uff0c',), u'PU'),
+    #          ((u'\u82f9\u679c',), 'NN'), ((u'\u5c06',), u'AD'), ((u'\u53d8\u6210',), 'VV'), ((u'\u5b8c\u5168',), u'AD'),
+    #          ((u'\u4e0d\u540c',), 'VV'), ((u'\u7684',), u'DEC'), ((u'\u516c\u53f8',), 'NN'), ((u'\u3002',), u'PU')],
+    #         (u'\u82f9\u679c', u'\u4e8e', u'3\u6708', u'9\u65e5', u'\u6b63\u5f0f', u'\u516c\u5e03', u'Apple', u'Watch',
+    #          u'\u7684', u'\u5b9a\u4ef7', u'\u7b49', u'\u7ec6\u8282', u'\u540e')],
+    #         [[((u'Apple', u'Watch', u'\u53d1\u5e03\u4f1a'), 'NN'), ((u'\u5c06',), u'AD'), ((u'\u5c55\u793a',), 'VV'),
+    #          ((u'\u4e00',), u'CD'), ((u'\u4e2a',), u'M'), ((u'\u6ea2\u4ef7', u'\u5927\u4f17', u'\u5e02\u573a', u'\u6280\u672f', u'\u54c1\u724c'), 'NN'),
+    #          ((u'\u5982\u4f55',), u'AD'), ((u'\u62e5\u62b1', u'\u5962\u534e'), 'VV'), ((u'\uff0c',), u'PU'), ((u'\u540c\u65f6',), u'AD'),
+    #          ((u'\u53c8',), u'AD'), ((u'\u4e0d',), u'AD'), ((u'\u4f1a', u'\u758f\u8fdc'), 'VV'), ((u'\u5176',), u'PN'),
+    #          ((u'\u7528\u6237', u'\u7fa4\u4f53'), 'NN'), ((u'\u3002',), u'PU')],
+    #         (u'Apple', u'Watch', u'\u53d1\u5e03\u4f1a', u'\u5c06', u'\u5c55\u793a', u'\u4e00', u'\u4e2a', u'\u6ea2\u4ef7',
+    #          u'\u5927\u4f17', u'\u5e02\u573a', u'\u6280\u672f', u'\u54c1\u724c', u'\u5982\u4f55', u'\u62e5\u62b1', u'\u5962\u534e')]]
 
-    # data = read_pickle('/Users/acepor/work/time/data/events_result2')
-    # outf = open('/Users/acepor/work/time/data/output_full2.txt','w')
+    data = read_pickle('/Users/acepor/work/time/data/events_result')
+    outf = open('/Users/acepor/work/time/data/output_full3.txt','w')
     for line in data:
         sen, event = line
         e, ne = recover_index(sen, event)
-        print e, ne
-        # print sen
-        # print event
-        # e, ne = recover_index(sen, event)
+        # print 'e', e
+        # print 'ne', ne
         re_e = detect_overall(e)
         re_ne = detect_overall(ne)
         time_score1, distance1, p1 = evaluate_status(re_e, e, 'e')
         time_score2, distance2, p2 = evaluate_status(re_ne, e, 'e')
-        #
-        # total_score = time_score1 + time_score2
-        # ss = 'original: ' + ' '.join(' '.join(a) for a, b in sen) + '\n\n'
-        # s1 = 'score ' + str(total_score) + ' - ' + ' '.join(p1) + ' + ' + ' '.join(p2) + '\n'
-        # s2 = ' '.join(k for k in event) + '\n'
 
-    #     outf.write(s1)
-    #     outf.write(s2.encode('utf-8'))
-    #     outf.write(ss.encode('utf-8'))
-    # outf.flush()
-    # outf.close()
+
+        total_score = time_score1 + time_score2
+        ss = 'original: ' + ' '.join(' '.join(a) for a, b in sen) + '\n\n'
+        s1 = 'score ' + str(total_score) + ' - ' + ' '.join(p1) + ' + ' + ' '.join(p2) + '\n'
+        s2 = ' '.join(k for k in event) + '\n'
+        # print s1
+        # print s2
+        # print ss
+
+        outf.write(s1)
+        outf.write(s2.encode('utf-8'))
+        outf.write(ss.encode('utf-8'))
+    outf.flush()
+    outf.close()
