@@ -140,22 +140,36 @@ def calculate_index(sen_tuple, event_index):
 
 
 def recover_index(sen_list, result_tup):
-    full_sen, non_event_clause = [], []
-    tuple_index, event_set = 0, set()  # build a set to filter the possibly duplicated clauses
-    for i in sen_list:
-        tuple_index += 1
-        full_sen.append(i + (tuple_index, ))
-    clauses = [list(group) for k, group in itertools.groupby(full_sen, lambda x: x[0][0] == u'\uff0c') if not k]
+    i, j = 0, 0
+    result, result_size, full_list, comma_index = [], 0, [], [0,]
+    event_clause, non_event_clause = [], []
+    full_list = [(item, ind) for ind, item in enumerate(sen_list)]
 
-    for clause in clauses:
-        for word in result_tup:
-            for item in clause:
-                if word == item[0][0]:
-                    event_set.update((item,))
+    for item in full_list:
+        if item[0][0][0] == u'\uff0c':
+            comma_index.append(item[1])
+    comma_index.extend([full_list[-1][1]])
 
-    event_clause = sorted(event_set, key=itemgetter(2))
-    non_event_list = [(k, v, i) for k, v, i in full_sen if k[0] not in result_tup]
-    non_event_clause = sorted(non_event_list, key=itemgetter(2))
+    result, result_size = [], 0
+    while i<len(sen_list):
+        item = sen_list[i][0]
+        l = len(item)
+        if item == result_tup[j:j+l]:
+            j += l
+            result.append((sen_list[i] + (i,)))
+            result_size += l
+        else:
+            result, result_size, j = [], 0, 0
+        i += 1
+        if result_size == len(result_tup): break
+
+    min_comma, max_comma = result[0][2], result[len(result) - 1][2]
+
+    for i in comma_index:
+        if i <= min_comma:
+            event_clause = full_list[min_comma: max_comma]
+            non_event_clause = full_list[0:min_comma]
+            non_event_clause.extend(full_list[max_comma:])
 
     return event_clause, non_event_clause
 
@@ -228,7 +242,6 @@ def detect_date(clause_tuples, ref_yr=current_y):
         status = -1
     elif state < 0:
         status = 1
-    # print status, matched_tuple
 
     if status == 'HoldingMonth' or status == 'HoldingYear' or status == 'CURRENT':
         status = -1
@@ -300,11 +313,9 @@ def detect_overall(clause_tuples):
     status, matched_tuple, result = '', (), []
 
     result.append(detect_date(clause_tuples, ref_yr=current_y))
-    # -1 indicates a past event
     result.append(detect_time(clause_tuples, t_phrases=FUTURE_PHRASES, suffix=FUTURE_PREFIX, prefix=FUTURE_SUFFIX, state=1))
     result.append(detect_time(clause_tuples, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_PREFIX, state=-1))
-
-    # 1 indicates a future event
+    # 1 indicates a future event，  -1 indicates a past event
 
     return set([a for a in result if a is not None if len(a) > 1])
 
@@ -367,7 +378,7 @@ def detect_time_in_sen(sen, temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_SUFF
 
 
 def evaluate_status(time_set, event_tuple, type='e'):
-    time_score, distance = 0, 0
+    time_score, distance, pattern_list = 0, 0, []
     index_list = [int(i[2]) for i in event_tuple]  # each tuple has three elements
     b_min, b_max = min(index_list)-1, max(index_list)+1
 
@@ -378,12 +389,13 @@ def evaluate_status(time_set, event_tuple, type='e'):
             # If the event clause does not contain any expression, or the expressions are controversial.
             time_score += j[0] / 2.0
             distance += (b_min - int(j[3]))
-
         else:
             time_score = 0
-    pattern = [b for (a, b, c, d) in time_set]
 
-    return time_score, distance, pattern
+    for i in [b for (a, b, c, d) in time_set]:
+        pattern_list.append(i) if isinstance(i, str) else pattern_list.append(i.encode('utf-8'))
+
+    return time_score, distance, pattern_list
 
 
 ########################################################################
@@ -393,26 +405,57 @@ if __name__ == '__main__':
     gc.disable()
     a = now_str(hide_microseconds=False)
 
-    data = read_pickle('/Users/acepor/work/time/data/events_result')
-    outf = open('/Users/acepor/work/time/data/output_full1.txt','w')
+    data = [[[((u'BI', u'\u4e2d\u6587'), 'NN'), ((u'\u7ad9',), 'VV'), ((u'3\u6708', u'7\u65e5'), 'NN'), ((u'\u62a5\u9053',), 'VV'),
+             ((u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch'), 'NN'), ((u'\u4ee3\u8868',), 'VV'), ((u'\u7740',), u'AS'),
+             ((u'2007\u5e74', u'\u82f9\u679c'), 'NN'), ((u'\u63a8\u51fa',), 'VV'), ((u'\u667a\u80fd', u'\u624b\u673a', u'iPhone'), 'NN'),
+             ((u'\u4ee5\u6765',), u'LC'), ((u'\u6700\u5927',), u'JJ'), ((u'\u8d4c\u6ce8',), 'NN'), ((u'\uff0c',), u'PU'),
+             ((u'\u4e00\u65e6',), u'CS'), ((u'\u82f9\u679c',), 'NN'), ((u'\u4e8e',), u'P'), ((u'3\u6708', u'9\u65e5'), 'NN'),
+             ((u'\u6b63\u5f0f',), u'AD'), ((u'\u516c\u5e03',), 'VV'), ((u'Apple', u'Watch'), 'NN'), ((u'\u7684',), u'DEG'),
+             ((u'\u5b9a\u4ef7',), 'NN'), ((u'\u7b49',), u'ETC'), ((u'\u7ec6\u8282',), 'NN'), ((u'\u540e',), u'LC'), ((u'\uff0c',), u'PU'),
+             ((u'\u82f9\u679c',), 'NN'), ((u'\u5c06',), u'AD'), ((u'\u53d8\u6210',), 'VV'), ((u'\u5b8c\u5168',), u'AD'),
+             ((u'\u4e0d\u540c',), 'VV'), ((u'\u7684',), u'DEC'), ((u'\u516c\u53f8',), 'NN'), ((u'\u3002',), u'PU')],
+                (u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch', u'\u4ee3\u8868', u'\u7740', u'2007\u5e74', u'\u82f9\u679c',
+                u'\u63a8\u51fa', u'\u667a\u80fd', u'\u624b\u673a', u'iPhone', u'\u4ee5\u6765', u'\u6700\u5927', u'\u8d4c\u6ce8')],
+            [[((u'BI', u'\u4e2d\u6587'), 'NN'), ((u'\u7ad9',), 'VV'), ((u'3\u6708', u'7\u65e5'), 'NN'), ((u'\u62a5\u9053',), 'VV'),
+             ((u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch'), 'NN'), ((u'\u4ee3\u8868',), 'VV'), ((u'\u7740',), u'AS'),
+             ((u'2007\u5e74', u'\u82f9\u679c'), 'NN'), ((u'\u63a8\u51fa',), 'VV'), ((u'\u667a\u80fd', u'\u624b\u673a', u'iPhone'), 'NN'),
+             ((u'\u4ee5\u6765',), u'LC'), ((u'\u6700\u5927',), u'JJ'), ((u'\u8d4c\u6ce8',), 'NN'), ((u'\uff0c',), u'PU'),
+             ((u'\u4e00\u65e6',), u'CS'), ((u'\u82f9\u679c',), 'NN'), ((u'\u4e8e',), u'P'), ((u'3\u6708', u'9\u65e5'), 'NN'),
+             ((u'\u6b63\u5f0f',), u'AD'), ((u'\u516c\u5e03',), 'VV'), ((u'Apple', u'Watch'), 'NN'), ((u'\u7684',), u'DEG'),
+             ((u'\u5b9a\u4ef7',), 'NN'), ((u'\u7b49',), u'ETC'), ((u'\u7ec6\u8282',), 'NN'), ((u'\u540e',), u'LC'), ((u'\uff0c',), u'PU'),
+             ((u'\u82f9\u679c',), 'NN'), ((u'\u5c06',), u'AD'), ((u'\u53d8\u6210',), 'VV'), ((u'\u5b8c\u5168',), u'AD'),
+             ((u'\u4e0d\u540c',), 'VV'), ((u'\u7684',), u'DEC'), ((u'\u516c\u53f8',), 'NN'), ((u'\u3002',), u'PU')],
+            (u'\u82f9\u679c', u'\u4e8e', u'3\u6708', u'9\u65e5', u'\u6b63\u5f0f', u'\u516c\u5e03', u'Apple', u'Watch',
+             u'\u7684', u'\u5b9a\u4ef7', u'\u7b49', u'\u7ec6\u8282', u'\u540e')],
+            [[((u'Apple', u'Watch', u'\u53d1\u5e03\u4f1a'), 'NN'), ((u'\u5c06',), u'AD'), ((u'\u5c55\u793a',), 'VV'),
+             ((u'\u4e00',), u'CD'), ((u'\u4e2a',), u'M'), ((u'\u6ea2\u4ef7', u'\u5927\u4f17', u'\u5e02\u573a', u'\u6280\u672f', u'\u54c1\u724c'), 'NN'),
+             ((u'\u5982\u4f55',), u'AD'), ((u'\u62e5\u62b1', u'\u5962\u534e'), 'VV'), ((u'\uff0c',), u'PU'), ((u'\u540c\u65f6',), u'AD'),
+             ((u'\u53c8',), u'AD'), ((u'\u4e0d',), u'AD'), ((u'\u4f1a', u'\u758f\u8fdc'), 'VV'), ((u'\u5176',), u'PN'),
+             ((u'\u7528\u6237', u'\u7fa4\u4f53'), 'NN'), ((u'\u3002',), u'PU')],
+            (u'Apple', u'Watch', u'\u53d1\u5e03\u4f1a', u'\u5c06', u'\u5c55\u793a', u'\u4e00', u'\u4e2a', u'\u6ea2\u4ef7',
+             u'\u5927\u4f17', u'\u5e02\u573a', u'\u6280\u672f', u'\u54c1\u724c', u'\u5982\u4f55', u'\u62e5\u62b1', u'\u5962\u534e')]]
+
+    # data = read_pickle('/Users/acepor/work/time/data/events_result2')
+    # outf = open('/Users/acepor/work/time/data/output_full2.txt','w')
     for line in data:
         sen, event = line
         e, ne = recover_index(sen, event)
+        print e, ne
+        # print sen
+        # print event
+        # e, ne = recover_index(sen, event)
         re_e = detect_overall(e)
         re_ne = detect_overall(ne)
         time_score1, distance1, p1 = evaluate_status(re_e, e, 'e')
         time_score2, distance2, p2 = evaluate_status(re_ne, e, 'e')
+        #
+        # total_score = time_score1 + time_score2
+        # ss = 'original: ' + ' '.join(' '.join(a) for a, b in sen) + '\n\n'
+        # s1 = 'score ' + str(total_score) + ' - ' + ' '.join(p1) + ' + ' + ' '.join(p2) + '\n'
+        # s2 = ' '.join(k for k in event) + '\n'
 
-        total_score = time_score1 + time_score2
-
-        ss = 'original: ' + ' '.join(' '.join(a) for a, b in sen) + '\n\n'
-        s1 = 'score ' + str(total_score)  + '\n' + ' '.join(p1)
-        s2 = ' '.join(k for k in event) + '\n'
-
-        # print [i.encode('utf-8') for i in p1 if type(i) == 'utf-8']
-
-        outf.write(s1)
-        outf.write(s2.encode('utf-8'))
-        outf.write(ss.encode('utf-8'))
-    outf.flush()
-    outf.close()
+    #     outf.write(s1)
+    #     outf.write(s2.encode('utf-8'))
+    #     outf.write(ss.encode('utf-8'))
+    # outf.flush()
+    # outf.close()
