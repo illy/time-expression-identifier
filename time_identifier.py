@@ -118,7 +118,7 @@ def recover_index(sen_list, result_tup):
     full_list = [item + (ind,) for ind, item in enumerate(sen_list)]
 
     for item, tag, index in full_list:
-        if item[0][0] == u'\uff0c':  # u'\uff0c' stands for the full-width comma
+        if item[0] == u'\uff0c':  # u'\uff0c' stands for the full-width comma
             comma_index.append(index)
     comma_index.extend([full_list[-1][2]])  # capture all commas in the sentence
 
@@ -126,24 +126,27 @@ def recover_index(sen_list, result_tup):
     result, result_size = [], 0
     while i < len(sen_list):
         item = sen_list[i][0]
-        l = len(item)
-        if item == result_tup[j:j+l]:
-            j += l
-            result.append((sen_list[i] + (i,)))  # extract the matched tuple
-            result_size += l
+        if item == result_tup[j:j+1][0]:
+            j += 1
+            result.append((sen_list[i][0], i))  # extract the matched tuple
+            result_size += 1
         else:
             result, result_size, j = [], 0, 0
         i += 1
         if result_size == len(result_tup): break
 
-    min_comma, max_comma = result[0][2], result[-1][2]  # capture the boundaries of the event tuple
+    min_comma, max_comma = result[0][1], result[-1][1]  # capture the boundaries of the event tuple
 
     k = 0
     while k < len(comma_index)-1:
         left_comma, right_comma = comma_index[k], comma_index[k+1]  # set the boundaries according to the comma list
         if left_comma <= min_comma <= right_comma:
-            event_clause = full_list[left_comma+1: right_comma]  # exclude the left comma
-            non_event_clause = full_list[0:left_comma]
+            if full_list[left_comma-1] == u'\uff0c':
+                event_clause = full_list[left_comma+1: right_comma]  # exclude the left comma
+                non_event_clause = full_list[0:left_comma+1]
+            else:
+                event_clause = full_list[left_comma+1: right_comma]
+                non_event_clause = full_list[0:left_comma]
             non_event_clause.extend(full_list[right_comma+1:])
             break
         k += 1
@@ -235,7 +238,6 @@ def detect_time(clause, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_
         possed_token = token + '#' + pos
         # print 'p', possed_token
 
-
         if status == '':
             for item in possed_token.split(' '):
                 if item in t_phrases:
@@ -273,46 +275,6 @@ def detect_time(clause, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_
         return None
 
 
-
-        # if status == '':
-        #     for item in t_phrases:
-        #         if item in possed_token:
-        #             status, matched_tuple = 'PE', (token, pos, index)
-        #             break
-        #     else:
-        #         for item in TIME_MORPHEMES:
-        #             if item in possed_token:
-        #                 status = 'TW'
-        #                 break
-        #             else:
-        #                 for item in prefix:
-        #                     if item in possed_token:
-        #                         status = 'TP'
-        #                         break
-        #                     else:
-        #                         status = ''
-
-        # elif status == 'TW':
-        #     for item in suffix:
-        #         if item in possed_token:
-        #             status, matched_tuple = 'TWTS', (token, pos, index)
-        #             break
-        #         else:
-        #             for item in prefix:
-        #                 if item in possed_token:
-        #                     status = 'TP'
-        #                     break
-        #                 else:
-        #                     status = ''
-        #
-        # elif status == 'TP':
-        #     for item in TIME_MORPHEMES:
-        #         if item in possed_token:
-        #             status, matched_tuple = 'TPTW', (token, pos, index)
-        #             break
-        #         else:
-        #             status = ''
-
 ########################################################################
 
 
@@ -341,6 +303,7 @@ def evaluate_status(time_set, event_tuple, type='e'):
             distance = 0
         elif time_score == 0 and int(j[3]) < b_min:
             # If the event clause does not contain any expression, or the expressions are controversial.
+            # Only evaluate the clause appeared in front of the event clause.
             time_score += j[0] / 2.0
             distance += (b_min - int(j[3]))
         else:
@@ -359,71 +322,52 @@ if __name__ == '__main__':
     gc.disable()
     a = now_str(hide_microseconds=False)
 
-    # data = [[[((u'BI', u'\u4e2d\u6587'), 'NN'), ((u'\u7ad9',), 'VV'), ((u'3\u6708', u'7\u65e5'), 'NN'), ((u'\u62a5\u9053',), 'VV'),
-    #          ((u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch'), 'NN'), ((u'\u4ee3\u8868',), 'VV'), ((u'\u7740',), u'AS'),
-    #          ((u'2007\u5e74', u'\u82f9\u679c'), 'NN'), ((u'\u63a8\u51fa',), 'VV'), ((u'\u667a\u80fd', u'\u624b\u673a', u'iPhone'), 'NN'),
-    #          ((u'\u4ee5\u6765',), u'LC'), ((u'\u6700\u5927',), u'JJ'), ((u'\u8d4c\u6ce8',), 'NN'), ((u'\uff0c',), u'PU'),
-    #          ((u'\u4e00\u65e6',), u'CS'), ((u'\u82f9\u679c',), 'NN'), ((u'\u4e8e',), u'P'), ((u'3\u6708', u'9\u65e5'), 'NN'),
-    #          ((u'\u6b63\u5f0f',), u'AD'), ((u'\u516c\u5e03',), 'VV'), ((u'Apple', u'Watch'), 'NN'), ((u'\u7684',), u'DEG'),
-    #          ((u'\u5b9a\u4ef7',), 'NN'), ((u'\u7b49',), u'ETC'), ((u'\u7ec6\u8282',), 'NN'), ((u'\u540e',), u'LC'), ((u'\uff0c',), u'PU'),
-    #          ((u'\u82f9\u679c',), 'NN'), ((u'\u5c06',), u'AD'), ((u'\u53d8\u6210',), 'VV'), ((u'\u5b8c\u5168',), u'AD'),
-    #          ((u'\u4e0d\u540c',), 'VV'), ((u'\u7684',), u'DEC'), ((u'\u516c\u53f8',), 'NN'), ((u'\u3002',), u'PU')],
-    #             (u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch', u'\u4ee3\u8868', u'\u7740', u'2007\u5e74', u'\u82f9\u679c',
-    #             u'\u63a8\u51fa', u'\u667a\u80fd', u'\u624b\u673a', u'iPhone', u'\u4ee5\u6765', u'\u6700\u5927', u'\u8d4c\u6ce8')],
-    #         [[((u'BI', u'\u4e2d\u6587'), 'NN'), ((u'\u7ad9',), 'VV'), ((u'3\u6708', u'7\u65e5'), 'NN'), ((u'\u62a5\u9053',), 'VV'),
-    #          ((u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch'), 'NN'), ((u'\u4ee3\u8868',), 'VV'), ((u'\u7740',), u'AS'),
-    #          ((u'2007\u5e74', u'\u82f9\u679c'), 'NN'), ((u'\u63a8\u51fa',), 'VV'), ((u'\u667a\u80fd', u'\u624b\u673a', u'iPhone'), 'NN'),
-    #          ((u'\u4ee5\u6765',), u'LC'), ((u'\u6700\u5927',), u'JJ'), ((u'\u8d4c\u6ce8',), 'NN'), ((u'\uff0c',), u'PU'),
-    #          ((u'\u4e00\u65e6',), u'CS'), ((u'\u82f9\u679c',), 'NN'), ((u'\u4e8e',), u'P'), ((u'3\u6708', u'9\u65e5'), 'NN'),
-    #          ((u'\u6b63\u5f0f',), u'AD'), ((u'\u516c\u5e03',), 'VV'), ((u'Apple', u'Watch'), 'NN'), ((u'\u7684',), u'DEG'),
-    #          ((u'\u5b9a\u4ef7',), 'NN'), ((u'\u7b49',), u'ETC'), ((u'\u7ec6\u8282',), 'NN'), ((u'\u540e',), u'LC'), ((u'\uff0c',), u'PU'),
-    #          ((u'\u82f9\u679c',), 'NN'), ((u'\u5c06',), u'AD'), ((u'\u53d8\u6210',), 'VV'), ((u'\u5b8c\u5168',), u'AD'),
-    #          ((u'\u4e0d\u540c',), 'VV'), ((u'\u7684',), u'DEC'), ((u'\u516c\u53f8',), 'NN'), ((u'\u3002',), u'PU')],
-    #         (u'\u82f9\u679c', u'\u4e8e', u'3\u6708', u'9\u65e5', u'\u6b63\u5f0f', u'\u516c\u5e03', u'Apple', u'Watch',
-    #          u'\u7684', u'\u5b9a\u4ef7', u'\u7b49', u'\u7ec6\u8282', u'\u540e')],
-    #         [[((u'Apple', u'Watch', u'\u53d1\u5e03\u4f1a'), 'NN'), ((u'\u5c06',), u'AD'), ((u'\u5c55\u793a',), 'VV'),
-    #          ((u'\u4e00',), u'CD'), ((u'\u4e2a',), u'M'), ((u'\u6ea2\u4ef7', u'\u5927\u4f17', u'\u5e02\u573a', u'\u6280\u672f', u'\u54c1\u724c'), 'NN'),
-    #          ((u'\u5982\u4f55',), u'AD'), ((u'\u62e5\u62b1', u'\u5962\u534e'), 'VV'), ((u'\uff0c',), u'PU'), ((u'\u540c\u65f6',), u'AD'),
-    #          ((u'\u53c8',), u'AD'), ((u'\u4e0d',), u'AD'), ((u'\u4f1a', u'\u758f\u8fdc'), 'VV'), ((u'\u5176',), u'PN'),
-    #          ((u'\u7528\u6237', u'\u7fa4\u4f53'), 'NN'), ((u'\u3002',), u'PU')],
-    #         (u'Apple', u'Watch', u'\u53d1\u5e03\u4f1a', u'\u5c06', u'\u5c55\u793a', u'\u4e00', u'\u4e2a', u'\u6ea2\u4ef7',
-    #          u'\u5927\u4f17', u'\u5e02\u573a', u'\u6280\u672f', u'\u54c1\u724c', u'\u5982\u4f55', u'\u62e5\u62b1', u'\u5962\u534e')]]
+    data = [[[(u'\u4ee5\u4e0b', u'AD'), (u'\u56db', u'CD'), (u'\u5927', u'JJ'), (u'\u56e0\u7d20', u'NN'),
+            (u'\u4e5f', u'AD'), (u'\u8868\u660e', u'VV'), (u'\u5e93\u514b', u'NR'), (u'\u4ecd', u'AD'),
+             (u'\u662f', u'VC'), (u'\u5f15\u9886', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u8d70\u5411', u'VV'),
+             (u'\u672a\u6765', u'NT'), (u'\u7684', u'DEG'), (u'\u5408\u9002', u'JJ'), (u'\u4eba\u9009', u'NN'),
+             (u'\u3002', u'PU')],
+                (u'\u5e93\u514b', u'\u4ecd', u'\u662f', u'\u5f15\u9886', u'\u82f9\u679c', u'\u8d70\u5411',
+                 u'\u672a\u6765', u'\u7684', u'\u5408\u9002', u'\u4eba\u9009')],
+                [[(u'\u5f53\u7136', u'AD'), (u'\uff0c', u'PU'), (u'\u5e93\u514b', u'NR'), (u'\u4e5f', u'AD'),
+                 (u'\u6ca1\u6709', u'AD'), (u'\u4f4e\u4f30', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u7684', u'DEC'),
+                 (u'\u672a\u6765', u'NT'), (u'\u3002', u'PU')],
+                (u'\u5e93\u514b', u'\u4e5f', u'\u6ca1\u6709', u'\u4f4e\u4f30', u'\u82f9\u679c', u'\u7684', u'\u672a\u6765')],
+                [[(u'\u9c8d\u5c14\u9ed8', u'NR'), (u'\u9000\u4f11', u'VV'), (u'\u6d88\u606f', u'NN'), (u'\u523a\u6fc0', u'VV'),
+                 (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\u53d7', u'LB'),
+                 (u'\u9c8d\u5c14', u'NR'), (u'\u9ed8', u'NT'), (u'\u4e00', u'CD'), (u'\u5e74', u'M'), (u'\u5185', u'LC'),
+                 (u'\u5c06', u'BA'), (u'\u9000\u4f11', u'VV'), (u'\u7684', u'DEC'), (u'\u6d88\u606f', u'NN'),
+                 (u'\u523a\u6fc0', u'NN'), (u'\uff0c', u'PU'), (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'),
+                 (u'\u5468\u4e94', u'NT'), (u'\u5927', u'AD'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\uff0c', u'PU'),
+                 (u'\u62a5', u'VV'), (u'\u6536\u4e8e', u'VV'), (u'34.75', u'CD'), (u'\u7f8e\u5143', u'M'), (u'\u3002', u'PU')],
+                (u'\u5fae\u8f6f', u'\u80a1\u4ef7', u'\u6da8', u'7.29%', u'\u53d7', u'\u9c8d\u5c14', u'\u9ed8', u'\u4e00',
+                 u'\u5e74', u'\u5185', u'\u5c06', u'\u9000\u4f11', u'\u7684', u'\u6d88\u606f', u'\u523a\u6fc0')]]
 
-    data = read_pickle('/Users/acepor/work/time/data/events_result')
-    outf = open('/Users/acepor/work/time/data/output_full7.txt','w')
+    # data = read_pickle('/Users/acepor/work/time/data/events_result.pkl')
+    # outf = open('/Users/acepor/work/time/data/output_full7.txt','w')
     for line in data:
         sen, event = line
+        print 'sen', ' '.join([a for a, b in sen])
+        print  'event', ' '.join(event)
         e, ne = recover_index(sen, event)
-        # print sen
-        re_e = detect_overall(e)
-        re_ne = detect_overall(ne)
-        time_score1, distance1, p1 = evaluate_status(re_e, e, 'e')
-        time_score2, distance2, p2 = evaluate_status(re_ne, e, 'ne')
-
-        total_score = time_score1 + time_score2
-
-        s4 = str(total_score) + ' ' + str(time_score1) + ' ' + str(time_score2)  + '\n'
-        ss = 'original: ' + ' '.join(' '.join(a) for a, b in sen) + '\n\n'
-        s1 = 'score ' + str(total_score) + ' e: ' + ', '.join(p1) + ' ne: ' + ', '.join(p2) + '\n'
-        s2 = ' '.join(k for k in event) + '\n'
+        print 'e', ' '.join([a for a, b, c in e])
+        print 'ne', ' '.join([a for a, b, c in ne])
+        # re_e = detect_overall(e)
+        # re_ne = detect_overall(ne)
+        # time_score1, distance1, p1 = evaluate_status(re_e, e, 'e')
+        # time_score2, distance2, p2 = evaluate_status(re_ne, e, 'ne')
+        #
+        # total_score = time_score1 + time_score2
+        #
+        # s4 = str(total_score) + ' ' + str(time_score1) + ' ' + str(time_score2)  + '\n'
+        # ss = 'original: ' + ' '.join(' '.join(a) for a, b in sen) + '\n\n'
+        # s1 = 'score ' + str(total_score) + ' e: ' + ', '.join(p1) + ' ne: ' + ', '.join(p2) + '\n'
+        # s2 = ' '.join(k for k in event) + '\n'
         # print s1; print s2; print s4; print ss
 
-        outf.write(s1)
-        outf.write(s4)
-        outf.write(s2.encode('utf-8'))
-        outf.write(ss.encode('utf-8'))
-    outf.flush()
-    outf.close()
-
-    '''score -1 e: 已经 ne: 已经
-    Uber 已经 为 洛杉矶 地区 的 司机 计算 出 了 包括 小费 在内 的 平均 车资 标准
-    original: Uber 已经 为 洛杉矶 地区 的 司机 计算 出 了 包括 小费 在内 的 平均 车资 标准 ， 并且 已经 调整 了 车资 结构 以 补贴 司机 ， 同时 使 客户 的 Uber 用车 体验 变得 尽可能 顺利 。'''
-
-    '''score -1 e: 世纪 90年代 ne: 已经
-    风险 投资 公司 当前 对 移动 游戏 产业 的 支持 力度 并不 像上 世纪 90年代 末 对 网络 创新 公司 的 支持 力度
-    original: 风险 投资 公司 当前 对 移动 游戏 产业 的 支持 力度 并不 像上 世纪 90年代 末 对 网络 创新 公司 的 支持 力度 ， 但是 游戏 产业 的 整体 营销 预算 已经 因 风险 投资 公司 而 膨胀
-    。'''
-
-    '''score -1 e: 正 ne: 日前
-    BaiduEye 腾讯 科技 雷 建平 9月 15日 报道 百度 在 智能 硬件 领域 正 变得 越来越 酷
-    original: 百度 研究院 副院长 余凯 解读 BaiduEye ： 定位 O2O 模特 穿戴 BaiduEye 腾讯 科技 雷 建平 9月 15日 报道 百度 在 智能 硬件 领域 正 变得 越来越 酷 ， 其 日前 推出 最新 智能 可 穿戴 设备 BaiduEye ， 这 款 产品 从 概念 、 技术 路线 、 产品 功能 以及 应用 场景 看 ， 与 Google Glass 不同 。'''
+    #     outf.write(s1)
+    #     outf.write(s4)
+    #     outf.write(s2.encode('utf-8'))
+    #     outf.write(ss.encode('utf-8'))
+    # outf.flush()
+    # outf.close()
