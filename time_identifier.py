@@ -3,9 +3,7 @@
 __author__ = 'acepor'
 
 import gc
-import itertools
 from my_tools import now_str
-from operator import itemgetter
 from datetime import datetime
 import re
 from pickle import load
@@ -56,8 +54,8 @@ PAST_NT = ['之前#NT', '从前#NT', '以往#NT', '最初#NT', '当初#NT', '不
            '上周#NT', '上个星期#NT', '上星期#NT', '上礼拜#NT', '上个礼拜#NT', '上周末#NT',
            '前夜#NT', '前天#NT', '前日#NT', '往日#NT', '昨夜#NT', '昨天#NT', '昨日#NT', '近日#NT', '前一天#NT', '前晚#NT',
            '前三天#NT', '近些天#NT', '天前#NT', '日前#NT', '前些天#NT',
-           '前半生#NT', '近期#NT', '近期内#NT', '近来#NT', '上世纪#NT', '节前#NT', '上季#NT', '前段时间#NT', '前不久#NT', '近几年#NT',
-           '前一阵子#NT', '过季#NT']
+           '前半生#NT', '近期#NT', '近期内#NT', '近来#NT', '上世纪#NT', '节前#NT', '上季#NT', '前段时间#NT', '前不久#NT',
+           '近几年#NT', '前一阵子#NT', '过季#NT']
 
 PAST_NR = ['刚过去#NR']
 
@@ -117,7 +115,7 @@ def read_pickle(filename):
 
 def recover_index(sen_list, result_tup):
     comma_index, event_clause, non_event_clause = [0], [], []
-    full_list = [item+(ind,) for ind, item in enumerate(sen_list)]
+    full_list = [item + (ind,) for ind, item in enumerate(sen_list)]
 
     for item, tag, index in full_list:
         if item[0][0] == u'\uff0c':  # u'\uff0c' stands for the full-width comma
@@ -126,12 +124,12 @@ def recover_index(sen_list, result_tup):
 
     i, j = 0, 0
     result, result_size = [], 0
-    while k < len(sen_list):
+    while i < len(sen_list):
         item = sen_list[i][0]
         l = len(item)
         if item == result_tup[j:j+l]:
             j += l
-            result.append((sen_list[k] + (k,)))  # extract the matched tuple
+            result.append((sen_list[i] + (i,)))  # extract the matched tuple
             result_size += l
         else:
             result, result_size, j = [], 0, 0
@@ -159,9 +157,9 @@ def recover_index(sen_list, result_tup):
 cn_year = re.compile(u'(\d+)年')
 cn_month = re.compile(u'(\d+)月')
 cn_day = re.compile(u'(\d+)日')
-current_y = int(str(datetime.now()).split(' ')[0].split('-')[0])
-current_m = int(str(datetime.now()).split(' ')[0].split('-')[1])
-current_d = int(str(datetime.now()).split(' ')[0].split('-')[2])
+
+current = str(datetime.now()).split(' ')[0].split('-')
+current_y, current_m, current_d = int(current[0]), int(current[1]), int(current[2])
 
 
 def detect_date(clause_tuples, ref_yr=current_y):
@@ -172,19 +170,16 @@ def detect_date(clause_tuples, ref_yr=current_y):
     state, matched_tuple, status = 0, (), ''
 
     for token, pos, index in clause_tuples:
-        token = token[0]
+        token = ' '.join(token)
         if status == '':
-            matched_time = cn_year.match(token)
+            matched_time = cn_year.search(token)
             if matched_time:
                 matched_y = int(matched_time.group(1))
                 if matched_y < 100:  # if the year only contains two digits
                     m_year = matched_y
                     min_year = m_year + 1900
                     max_year = m_year + 2000
-                    if max_year - ref_yr > ref_yr - min_year:
-                        matched_y = m_year + 1900  # convert the year to 4 digits
-                    else:
-                        matched_y = m_year + 2000
+                    matched_y = min_year if max_year - ref_yr > ref_yr - min_year else max_year
 
                 if matched_y > 1900:
                     matched_tuple = (token, pos, index)
@@ -193,7 +188,7 @@ def detect_date(clause_tuples, ref_yr=current_y):
                         status = 'HoldingYear'
 
         elif status == 'HoldingYear':
-            matched_time = cn_month.match(token)
+            matched_time = cn_month.search(token)
             if matched_time:
                 matched_tuple = (token, pos, index)
                 matched_m = int(matched_time.group(1))
@@ -204,7 +199,7 @@ def detect_date(clause_tuples, ref_yr=current_y):
                 status = 'CURRENT'
 
         elif status == 'HoldingMonth':
-            matched_time = cn_day.match(token)
+            matched_time = cn_day.search(token)
             if matched_time:
                 matched_tuple = (token, pos, index)
                 matched_d = int(matched_time.group(1))
@@ -224,7 +219,7 @@ def detect_date(clause_tuples, ref_yr=current_y):
 
     if status == 'HoldingMonth' or status == 'HoldingYear' or status == 'CURRENT':
         status = -1
-
+    # print (status, ) + matched_tuple if status == 1 or status == -1 else None
     return (status, ) + matched_tuple if status == 1 or status == -1 else None
 
 
@@ -235,43 +230,37 @@ def detect_time(clause, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_
     status, matched_tuple = '', ()
 
     for token, pos, index in clause:
-        token, pos = token[0].encode('utf-8'), pos.encode('utf-8')
+        token = ' '.join(token).encode('utf-8')
+        pos =  pos.encode('utf-8')
         possed_token = token + '#' + pos
+        # print 'p', possed_token
+
 
         if status == '':
-            for item in t_phrases:
-                if item in possed_token:
+            for item in possed_token.split(' '):
+                if item in t_phrases:
                     status, matched_tuple = 'PE', (token, pos, index)
                     break
-            else:
-                for item in TIME_MORPHEMES:
-                    if item in possed_token:
-                        status = 'TW'
-                        break
-                    else:
-                        for item in prefix:
-                            if item in possed_token:
-                                status = 'TP'
-                                break
-                            else:
-                                status = ''
+                elif item in TIME_MORPHEMES:
+                    status = 'TW'
+                    break
+                elif item in prefix:
+                    status = 'TP'
+                    break
+                else:
+                    status = ''
 
         elif status == 'TW':
-            for item in suffix:
-                if item in possed_token:
+            for item in possed_token.split(' '):
+                if item in suffix:
                     status, matched_tuple = 'TWTS', (token, pos, index)
                     break
                 else:
-                    for item in prefix:
-                        if item in possed_token:
-                            status = 'TP'
-                            break
-                        else:
-                            status = ''
+                    status = ''
 
         elif status == 'TP':
-            for item in TIME_MORPHEMES:
-                if item in possed_token:
+            for item in possed_token.split(' '):
+                if item in TIME_MORPHEMES:
                     status, matched_tuple = 'TPTW', (token, pos, index)
                     break
                 else:
@@ -283,6 +272,46 @@ def detect_time(clause, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_
     else:
         return None
 
+
+
+        # if status == '':
+        #     for item in t_phrases:
+        #         if item in possed_token:
+        #             status, matched_tuple = 'PE', (token, pos, index)
+        #             break
+        #     else:
+        #         for item in TIME_MORPHEMES:
+        #             if item in possed_token:
+        #                 status = 'TW'
+        #                 break
+        #             else:
+        #                 for item in prefix:
+        #                     if item in possed_token:
+        #                         status = 'TP'
+        #                         break
+        #                     else:
+        #                         status = ''
+
+        # elif status == 'TW':
+        #     for item in suffix:
+        #         if item in possed_token:
+        #             status, matched_tuple = 'TWTS', (token, pos, index)
+        #             break
+        #         else:
+        #             for item in prefix:
+        #                 if item in possed_token:
+        #                     status = 'TP'
+        #                     break
+        #                 else:
+        #                     status = ''
+        #
+        # elif status == 'TP':
+        #     for item in TIME_MORPHEMES:
+        #         if item in possed_token:
+        #             status, matched_tuple = 'TPTW', (token, pos, index)
+        #             break
+        #         else:
+        #             status = ''
 
 ########################################################################
 
@@ -302,68 +331,14 @@ def detect_overall(clause_tuples):
 ########################################################################
 
 
-def detect_time_in_sen(sen, temp_phrases=FUTURE_PHRASES, temp_suffix=FUTURE_SUFFIX, temp_prefix=FUTURE_PREFIX):
-    status, result = '', []
-    for word in sen.split(' '):
-        if status == '':
-            for item in temp_phrases:
-                if item in word:
-                    result.append(('TEE   == ' + word + ' ==   ' + sen))
-                    status = 'TEE'
-                    break
-            else:
-                status = 'NTE'
-
-            if status == 'NTE':
-                for item in TIME_MORPHEMES:
-                    if item in word:
-                        status = 'TW'
-                        word_ = item
-                        break
-                    else:
-                        status = 'NTWTS'
-        elif status == 'TW':
-            for item in temp_suffix:
-                if item in word:
-                    result.append(('SUX   == ' + word_ + ' ' + word + ' ==   ' + sen))
-                    status = 'SUX'
-                    break
-                else:
-                    status = 'NTWTS'
-
-        if status == 'NTWTS':
-            for item in temp_prefix:
-                if item in word:
-                    status = 'TP'
-                    word_ = word
-                    break
-                else:
-                    status = ''
-        elif status == 'TP':
-            for item in TIME_MORPHEMES:
-                if item in word:
-                    result.append(('PRX   == ' + word_ + ' ' + word + ' ==   ' + sen))
-                    status = 'PRX'
-                    break
-                else:
-                    status = ''
-    if status == 'TEE' or 'SUX' or 'PRX':
-        return result
-    else:
-        return None
-
-
-########################################################################
-
-
 def evaluate_status(time_set, event_tuple, type='e'):
     time_score, distance, pattern_list = 0, 0, []
     index_list = [int(i[2]) for i in event_tuple]  # each tuple has three elements
     b_min, b_max = min(index_list)-1, max(index_list)+1
-
     for j in time_set:
         if b_min < int(j[3]) < b_max:  # each tuple has four elements
             time_score += j[0]
+            distance = 0
         elif time_score == 0 and int(j[3]) < b_min:
             # If the event clause does not contain any expression, or the expressions are controversial.
             time_score += j[0] / 2.0
@@ -415,28 +390,40 @@ if __name__ == '__main__':
     #          u'\u5927\u4f17', u'\u5e02\u573a', u'\u6280\u672f', u'\u54c1\u724c', u'\u5982\u4f55', u'\u62e5\u62b1', u'\u5962\u534e')]]
 
     data = read_pickle('/Users/acepor/work/time/data/events_result')
-    outf = open('/Users/acepor/work/time/data/output_full3.txt','w')
+    outf = open('/Users/acepor/work/time/data/output_full7.txt','w')
     for line in data:
         sen, event = line
         e, ne = recover_index(sen, event)
-        # print 'e', e
-        # print 'ne', ne
+        # print sen
         re_e = detect_overall(e)
         re_ne = detect_overall(ne)
         time_score1, distance1, p1 = evaluate_status(re_e, e, 'e')
-        time_score2, distance2, p2 = evaluate_status(re_ne, e, 'e')
-
+        time_score2, distance2, p2 = evaluate_status(re_ne, e, 'ne')
 
         total_score = time_score1 + time_score2
+
+        s4 = str(total_score) + ' ' + str(time_score1) + ' ' + str(time_score2)  + '\n'
         ss = 'original: ' + ' '.join(' '.join(a) for a, b in sen) + '\n\n'
-        s1 = 'score ' + str(total_score) + ' - ' + ' '.join(p1) + ' + ' + ' '.join(p2) + '\n'
+        s1 = 'score ' + str(total_score) + ' e: ' + ', '.join(p1) + ' ne: ' + ', '.join(p2) + '\n'
         s2 = ' '.join(k for k in event) + '\n'
-        # print s1
-        # print s2
-        # print ss
+        # print s1; print s2; print s4; print ss
 
         outf.write(s1)
+        outf.write(s4)
         outf.write(s2.encode('utf-8'))
         outf.write(ss.encode('utf-8'))
     outf.flush()
     outf.close()
+
+    '''score -1 e: 已经 ne: 已经
+    Uber 已经 为 洛杉矶 地区 的 司机 计算 出 了 包括 小费 在内 的 平均 车资 标准
+    original: Uber 已经 为 洛杉矶 地区 的 司机 计算 出 了 包括 小费 在内 的 平均 车资 标准 ， 并且 已经 调整 了 车资 结构 以 补贴 司机 ， 同时 使 客户 的 Uber 用车 体验 变得 尽可能 顺利 。'''
+
+    '''score -1 e: 世纪 90年代 ne: 已经
+    风险 投资 公司 当前 对 移动 游戏 产业 的 支持 力度 并不 像上 世纪 90年代 末 对 网络 创新 公司 的 支持 力度
+    original: 风险 投资 公司 当前 对 移动 游戏 产业 的 支持 力度 并不 像上 世纪 90年代 末 对 网络 创新 公司 的 支持 力度 ， 但是 游戏 产业 的 整体 营销 预算 已经 因 风险 投资 公司 而 膨胀
+    。'''
+
+    '''score -1 e: 正 ne: 日前
+    BaiduEye 腾讯 科技 雷 建平 9月 15日 报道 百度 在 智能 硬件 领域 正 变得 越来越 酷
+    original: 百度 研究院 副院长 余凯 解读 BaiduEye ： 定位 O2O 模特 穿戴 BaiduEye 腾讯 科技 雷 建平 9月 15日 报道 百度 在 智能 硬件 领域 正 变得 越来越 酷 ， 其 日前 推出 最新 智能 可 穿戴 设备 BaiduEye ， 这 款 产品 从 概念 、 技术 路线 、 产品 功能 以及 应用 场景 看 ， 与 Google Glass 不同 。'''
