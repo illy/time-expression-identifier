@@ -234,8 +234,11 @@ def detect_date(clause_tuples, ref_yr=current_y, clause_type='e'):
 
 ########################################################################
 
+PAST_PARAS = (PAST_PHRASES, PAST_SUFFIX, PAST_PREFIX, -1)
+FUTURE_PARAS = (FUTURE_PHRASES, FUTURE_SUFFIX, FUTURE_PREFIX, 1)
 
-def detect_time(clause, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_PREFIX, state=0):
+def detect_time(clause, paras = PAST_PARAS):
+    t_phrases, prefix, suffix, state = paras
     status, matched_tuple = '', ()
     possed_tokens = []
 
@@ -288,8 +291,8 @@ def detect_overall(clause_tuples, type='e'):
     status, matched_tuple, result = '', (), []
 
     result.append(detect_date(clause_tuples, ref_yr=current_y, clause_type=type))
-    result.append(detect_time(clause_tuples, t_phrases=FUTURE_PHRASES, suffix=FUTURE_PREFIX, prefix=FUTURE_SUFFIX, state=1))
-    result.append(detect_time(clause_tuples, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_PREFIX, state=-1))
+    result.append(detect_time(clause_tuples, paras=PAST_PARAS))
+    result.append(detect_time(clause_tuples, paras=FUTURE_PARAS))
     # 1 indicates a future event，  -1 indicates a past event
 
     return set([a for a in result if a is not None if len(a) > 1])
