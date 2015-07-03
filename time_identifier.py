@@ -162,7 +162,7 @@ current = str(datetime.now()).split(' ')[0].split('-')
 current_y, current_m, current_d = int(current[0]), int(current[1]), int(current[2])
 
 
-def detect_date(clause_tuples, ref_yr=current_y):
+def detect_date(clause_tuples, ref_yr=current_y, clause_type='e'):
     '''
     This function only deals with the expressions starting with explicit temporal expressions.
     '''
@@ -171,60 +171,65 @@ def detect_date(clause_tuples, ref_yr=current_y):
     for token, pos, index in clause_tuples:
         tokens += token
 
-    matched_date = cn_date.search(tokens)
-    _, matched_y, _, matched_m, _, matched_d = matched_date.groups()
+    # matched_date = cn_date.search(tokens)
+    # _, matched_y, _, matched_m, _, matched_d = matched_date.groups()
 
-    matched_d = int(matched_d) if matched_d else None # convert day
-    matched_m = int(matched_m) if matched_m else None # convert month
-    matched_y = int(matched_y) if matched_y else None # convert year
+    for _, matched_y, _, matched_m, _, matched_d in cn_date.findall(tokens):
 
-    if matched_y and matched_y < 100:
-        m_year = matched_y
-        min_year, max_year = m_year + 1900, m_year + 2000
-        matched_y = min_year if max_year - ref_yr > ref_yr - min_year else max_year
+        matched_d = int(matched_d) if matched_d else None # convert day
+        matched_m = int(matched_m) if matched_m else None # convert month
+        matched_y = int(matched_y) if matched_y else None # convert year
 
-    if matched_y and matched_m is None and matched_d is None:
-        pattern = str(matched_y) + '年'
-        state = current_y - matched_y
+        if matched_y and matched_y < 100:
+            m_year = matched_y
+            min_year, max_year = m_year + 1900, m_year + 2000
+            matched_y = min_year if max_year - ref_yr > ref_yr - min_year else max_year
 
-    elif matched_y and matched_m and matched_d is None:
-        pattern = str(matched_y) + '年' + str(matched_m) + '月'
-        if current_y - matched_y == 0:
-            state = current_m - matched_m
-        else:
+        if matched_y and matched_m is None and matched_d is None:
+            pattern = str(matched_y) + '年'
             state = current_y - matched_y
 
-    elif matched_y and matched_m and matched_d:
-        pattern = str(matched_y) + '年' + str(matched_m) + '月' + str(matched_d) + '日'
-        if current_y - matched_y == 0:
+        elif matched_y and matched_m and matched_d is None:
+            pattern = str(matched_y) + '年' + str(matched_m) + '月'
+            if current_y - matched_y == 0:
+                state = current_m - matched_m
+            else:
+                state = current_y - matched_y
+
+        elif matched_y and matched_m and matched_d:
+            pattern = str(matched_y) + '年' + str(matched_m) + '月' + str(matched_d) + '日'
+            if current_y - matched_y == 0:
+                if current_m - matched_m == 0:
+                    state = current_d - matched_d
+                else:
+                    state = current_m - matched_m
+            else:
+                state = current_y - matched_y
+
+        elif matched_y is None and matched_m and matched_d is None:
+            pattern = str(matched_m) + '月'
+            state = current_m - matched_m
+
+        elif matched_y is None and matched_m and matched_d:
+            pattern = str(matched_m) + '月' + str(matched_d) + '日'
             if current_m - matched_m == 0:
                 state = current_d - matched_d
             else:
                 state = current_m - matched_m
-        else:
-            state = current_y - matched_y
 
-    elif matched_y is None and matched_m and matched_d is None:
-        pattern = str(matched_m) + '月'
-        state = current_m - matched_m
-
-    elif matched_y is None and matched_m and matched_d:
-        pattern = str(matched_m) + '月' + str(matched_d) + '日'
-        if current_m - matched_m == 0:
+        elif matched_y is None and matched_m is None and matched_d:
+            pattern = str(matched_d) + '日'
             state = current_d - matched_d
-        else:
-            state = current_m - matched_m
-
-    elif matched_y is None and matched_m is None and matched_d:
-        pattern = str(matched_d) + '日'
-        state = current_d - matched_d
 
     if state > 0:
         status = -1
     elif state < 0:
         status = 1
 
-    return (status, pattern) if status == 1 or status == -1 else None
+    if clause_type == 'ne:':
+        status = status /2
+
+    return (status, pattern, u'NT', 0) if status == 1 or status == -1 else None
 
 
 ########################################################################
@@ -278,11 +283,11 @@ def detect_time(clause, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_
 ########################################################################
 
 
-def detect_overall(clause_tuples):
+def detect_overall(clause_tuples, type='e'):
 
     status, matched_tuple, result = '', (), []
 
-    result.append(detect_date(clause_tuples, ref_yr=current_y))
+    result.append(detect_date(clause_tuples, ref_yr=current_y, clause_type=type))
     result.append(detect_time(clause_tuples, t_phrases=FUTURE_PHRASES, suffix=FUTURE_PREFIX, prefix=FUTURE_SUFFIX, state=1))
     result.append(detect_time(clause_tuples, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_PREFIX, state=-1))
     # 1 indicates a future event，  -1 indicates a past event
@@ -322,7 +327,9 @@ if __name__ == '__main__':
     gc.disable()
     a = now_str(hide_microseconds=False)
 
-    # data = [[[(u'\u4ee5\u4e0b', u'AD'), (u'\u56db', u'CD'), (u'\u5927', u'JJ'), (u'\u56e0\u7d20', u'NN'),
+    # data = [[[(u'Apple', u'NR'), (u'Watch', u'NN'), (u'\u53d1\u5e03', u'VV'), (u'\u540e', u'LC'), (u'\u82f9\u679c', u'NN'), (u'\u5c06', u'AD'), (u'\u5b8c\u5168', u'AD'), (u'\u4e0d\u540c', u'JJ'), (u'BI', u'NN'), (u'\u4e2d\u6587', u'NN'), (u'\u7ad9', u'VV'), (u'3\u6708', u'NT'), (u'7\u65e5', u'NT'), (u'\u62a5\u9053', u'VV'), (u'\u667a\u80fd', u'NN'), (u'\u624b\u8868', u'NN'), (u'Apple', u'NN'), (u'Watch', u'NN'), (u'\u4ee3\u8868', u'VV'), (u'\u7740', u'AS'), (u'2007\u5e74', u'NT'), (u'\u82f9\u679c', u'NN'), (u'\u63a8\u51fa', u'VV'), (u'\u667a\u80fd', u'NN'), (u'\u624b\u673a', u'NN'), (u'iPhone', u'NN'), (u'\u4ee5\u6765', u'LC'), (u'\u6700\u5927', u'JJ'), (u'\u8d4c\u6ce8', u'NN'), (u'\uff0c', u'PU'), (u'\u4e00\u65e6', u'CS'), (u'\u82f9\u679c', u'NN'), (u'\u4e8e', u'P'), (u'3\u6708', u'NT'), (u'9\u65e5', u'NT'), (u'\u6b63\u5f0f', u'AD'), (u'\u516c\u5e03', u'VV'), (u'Apple', u'NN'), (u'Watch', u'NN'), (u'\u7684', u'DEG'), (u'\u5b9a\u4ef7', u'NN'), (u'\u7b49', u'ETC'), (u'\u7ec6\u8282', u'NN'), (u'\u540e', u'LC'), (u'\uff0c', u'PU'), (u'\u82f9\u679c', u'NN'), (u'\u5c06', u'AD'), (u'\u53d8\u6210', u'VV'), (u'\u5b8c\u5168', u'AD'), (u'\u4e0d\u540c', u'VA'), (u'\u7684', u'DEC'), (u'\u516c\u53f8', u'NN'), (u'\u3002', u'PU')],
+    #         (u'Apple', u'Watch', u'\u53d1\u5e03', u'\u540e', u'\u82f9\u679c', u'\u5c06', u'\u5b8c\u5168', u'\u4e0d\u540c', u'BI', u'\u4e2d\u6587', u'\u7ad9', u'3\u6708', u'7\u65e5', u'\u62a5\u9053', u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch', u'\u4ee3\u8868', u'\u7740', u'2007\u5e74', u'\u82f9\u679c', u'\u63a8\u51fa', u'\u667a\u80fd', u'\u624b\u673a', u'iPhone', u'\u4ee5\u6765', u'\u6700\u5927', u'\u8d4c\u6ce8')],
+    #         [[(u'\u4ee5\u4e0b', u'AD'), (u'\u56db', u'CD'), (u'\u5927', u'JJ'), (u'\u56e0\u7d20', u'NN'),
     #         (u'\u4e5f', u'AD'), (u'\u8868\u660e', u'VV'), (u'\u5e93\u514b', u'NR'), (u'\u4ecd', u'AD'),
     #          (u'\u662f', u'VC'), (u'\u5f15\u9886', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u8d70\u5411', u'VV'),
     #          (u'\u672a\u6765', u'NT'), (u'\u7684', u'DEG'), (u'\u5408\u9002', u'JJ'), (u'\u4eba\u9009', u'NN'),
@@ -354,19 +361,18 @@ if __name__ == '__main__':
         # print 'ne', ' '.join([a for a, b, c in ne])
         # print e
 
-        re_e = detect_overall(e)
-        re_ne = detect_overall(ne)
-
+        re_e = detect_overall(e, 'e')
+        re_ne = detect_overall(ne, 'ne')
         time_score1, distance1, p1 = evaluate_status(re_e, e, 'e')
         time_score2, distance2, p2 = evaluate_status(re_ne, e, 'ne')
 
         total_score = time_score1 + time_score2
 
         s4 = str(total_score) + ' ' + str(time_score1) + ' ' + str(time_score2)  + '\n'
-        ss = 'original: ' + ' '.join(' '.join(a) for a, b in sen) + '\n\n'
+        ss = 'original: ' + ' '.join(''.join(a) for a, b in sen) + '\n\n'
         s1 = 'score ' + str(total_score) + ' e: ' + ', '.join(p1) + ' ne: ' + ', '.join(p2) + '\n'
         s2 = ' '.join(k for k in event) + '\n'
-        print s1; print s2; print s4; print ss
+        # print s1; print s2; print s4; print ss
 
         outf.write(s1)
         outf.write(s4)
