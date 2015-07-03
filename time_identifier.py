@@ -157,16 +157,7 @@ def recover_index(sen_list, result_tup):
 ########################################################################
 
 
-# cn_year = re.compile(u'(\d+)年')
-# cn_month = re.compile(u'(\d+)月')
-# cn_day = re.compile(u'(\d+)日')
-
-cn_year = re.compile(u'(\d{2,4})年(\d{1,2})月(\d{1,2})日')
-cn_month = re.compile(u'(\d{1,2})月(\d{1,2})日')
-cn_day = re.compile(u'(\d{1,2})日')
 cn_date = re.compile(u'((\d{2,4})年)?((\d{1,2})月)?((\d{1,2})日)?')
-
-
 current = str(datetime.now()).split(' ')[0].split('-')
 current_y, current_m, current_d = int(current[0]), int(current[1]), int(current[2])
 
@@ -177,8 +168,6 @@ def detect_date(clause_tuples, ref_yr=current_y):
     '''
 
     state, pattern, status, tokens = 0, '', '', ''
-
-
     for token, pos, index in clause_tuples:
         tokens += token
 
@@ -235,7 +224,7 @@ def detect_date(clause_tuples, ref_yr=current_y):
     elif state < 0:
         status = 1
 
-    return status, pattern if status == 1 or status == -1 else None
+    return (status, pattern) if status == 1 or status == -1 else None
 
 
 ########################################################################
@@ -243,15 +232,14 @@ def detect_date(clause_tuples, ref_yr=current_y):
 
 def detect_time(clause, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_PREFIX, state=0):
     status, matched_tuple = '', ()
+    possed_tokens = []
 
     for token, pos, index in clause:
-        token = ' '.join(token).encode('utf-8')
-        pos =  pos.encode('utf-8')
         possed_token = token + '#' + pos
-        # print 'p', possed_token
+        possed_tokens.append(possed_token.encode('utf-8'))
 
         if status == '':
-            for item in possed_token.split(' '):
+            for item in possed_tokens:
                 if item in t_phrases:
                     status, matched_tuple = 'PE', (token, pos, index)
                     break
@@ -265,7 +253,7 @@ def detect_time(clause, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_
                     status = ''
 
         elif status == 'TW':
-            for item in possed_token.split(' '):
+            for item in possed_tokens:
                 if item in suffix:
                     status, matched_tuple = 'TWTS', (token, pos, index)
                     break
@@ -273,7 +261,7 @@ def detect_time(clause, t_phrases=PAST_PHRASES, suffix=PAST_SUFFIX, prefix=PAST_
                     status = ''
 
         elif status == 'TP':
-            for item in possed_token.split(' '):
+            for item in possed_tokens:
                 if item in TIME_MORPHEMES:
                     status, matched_tuple = 'TPTW', (token, pos, index)
                     break
@@ -356,7 +344,7 @@ if __name__ == '__main__':
     #              u'\u5e74', u'\u5185', u'\u5c06', u'\u9000\u4f11', u'\u7684', u'\u6d88\u606f', u'\u523a\u6fc0')]]
 
     data = read_pickle('/Users/acepor/work/time/data/events_result.pkl')
-    outf = open('/Users/acepor/work/time/data/output_full7.txt','w')
+    outf = open('/Users/acepor/work/time/data/output_full8.txt','w')
     for line in data:
         sen, event = line
         # print 'sen', ' '.join([a for a, b in sen])
@@ -368,8 +356,7 @@ if __name__ == '__main__':
 
         re_e = detect_overall(e)
         re_ne = detect_overall(ne)
-        # print re_e
-        # print re_ne
+
         time_score1, distance1, p1 = evaluate_status(re_e, e, 'e')
         time_score2, distance2, p2 = evaluate_status(re_ne, e, 'ne')
 
