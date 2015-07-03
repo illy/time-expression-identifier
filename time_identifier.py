@@ -157,9 +157,15 @@ def recover_index(sen_list, result_tup):
 ########################################################################
 
 
-cn_year = re.compile(u'(\d+)年')
-cn_month = re.compile(u'(\d+)月')
-cn_day = re.compile(u'(\d+)日')
+# cn_year = re.compile(u'(\d+)年')
+# cn_month = re.compile(u'(\d+)月')
+# cn_day = re.compile(u'(\d+)日')
+
+cn_year = re.compile(u'(\d{2,4})年(\d{1,2})月(\d{1,2})日')
+cn_month = re.compile(u'(\d{1,2})月(\d{1,2})日')
+cn_day = re.compile(u'(\d{1,2})日')
+cn_date = re.compile(u'((\d{2,4})年)?((\d{1,2})月)?((\d{1,2})日)?')
+
 
 current = str(datetime.now()).split(' ')[0].split('-')
 current_y, current_m, current_d = int(current[0]), int(current[1]), int(current[2])
@@ -170,60 +176,66 @@ def detect_date(clause_tuples, ref_yr=current_y):
     This function only deals with the expressions starting with explicit temporal expressions.
     '''
 
-    state, matched_tuple, status = 0, (), ''
+    state, pattern, status, tokens = 0, '', '', ''
+
 
     for token, pos, index in clause_tuples:
-        token = ' '.join(token)
-        if status == '':
-            matched_time = cn_year.search(token)
-            if matched_time:
-                matched_y = int(matched_time.group(1))
-                if matched_y < 100:  # if the year only contains two digits
-                    m_year = matched_y
-                    min_year = m_year + 1900
-                    max_year = m_year + 2000
-                    matched_y = min_year if max_year - ref_yr > ref_yr - min_year else max_year
+        tokens += token
 
-                if matched_y > 1900:
-                    matched_tuple = (token, pos, index)
-                    state = current_y - matched_y
-                    if state == 0:
-                        status = 'HoldingYear'
+    matched_date = cn_date.search(tokens)
+    _, matched_y, _, matched_m, _, matched_d = matched_date.groups()
 
-        elif status == 'HoldingYear':
-            matched_time = cn_month.search(token)
-            if matched_time:
-                matched_tuple = (token, pos, index)
-                matched_m = int(matched_time.group(1))
-                state = current_m - matched_m
-                if state == 0:
-                    status = 'HoldingMonth'
-            else:
-                status = 'CURRENT'
+    matched_d = int(matched_d) if matched_d else None # convert day
+    matched_m = int(matched_m) if matched_m else None # convert month
+    matched_y = int(matched_y) if matched_y else None # convert year
 
-        elif status == 'HoldingMonth':
-            matched_time = cn_day.search(token)
-            if matched_time:
-                matched_tuple = (token, pos, index)
-                matched_d = int(matched_time.group(1))
-                state = current_d - matched_d
-                if state == 0:
-                    status = 'CURRENT'
-            else:
-                status = 'CURRENT'
+    if matched_y and matched_y < 100:
+        m_year = matched_y
+        min_year, max_year = m_year + 1900, m_year + 2000
+        matched_y = min_year if max_year - ref_yr > ref_yr - min_year else max_year
 
+    if matched_y and matched_m is None and matched_d is None:
+        pattern = str(matched_y) + '年'
+        state = current_y - matched_y
+
+    elif matched_y and matched_m and matched_d is None:
+        pattern = str(matched_y) + '年' + str(matched_m) + '月'
+        if current_y - matched_y == 0:
+            state = current_m - matched_m
         else:
-            status = ''
+            state = current_y - matched_y
+
+    elif matched_y and matched_m and matched_d:
+        pattern = str(matched_y) + '年' + str(matched_m) + '月' + str(matched_d) + '日'
+        if current_y - matched_y == 0:
+            if current_m - matched_m == 0:
+                state = current_d - matched_d
+            else:
+                state = current_m - matched_m
+        else:
+            state = current_y - matched_y
+
+    elif matched_y is None and matched_m and matched_d is None:
+        pattern = str(matched_m) + '月'
+        state = current_m - matched_m
+
+    elif matched_y is None and matched_m and matched_d:
+        pattern = str(matched_m) + '月' + str(matched_d) + '日'
+        if current_m - matched_m == 0:
+            state = current_d - matched_d
+        else:
+            state = current_m - matched_m
+
+    elif matched_y is None and matched_m is None and matched_d:
+        pattern = str(matched_d) + '日'
+        state = current_d - matched_d
 
     if state > 0:
         status = -1
     elif state < 0:
         status = 1
 
-    if status == 'HoldingMonth' or status == 'HoldingYear' or status == 'CURRENT':
-        status = -1
-    # print (status, ) + matched_tuple if status == 1 or status == -1 else None
-    return (status, ) + matched_tuple if status == 1 or status == -1 else None
+    return status, pattern if status == 1 or status == -1 else None
 
 
 ########################################################################
@@ -322,52 +334,56 @@ if __name__ == '__main__':
     gc.disable()
     a = now_str(hide_microseconds=False)
 
-    data = [[[(u'\u4ee5\u4e0b', u'AD'), (u'\u56db', u'CD'), (u'\u5927', u'JJ'), (u'\u56e0\u7d20', u'NN'),
-            (u'\u4e5f', u'AD'), (u'\u8868\u660e', u'VV'), (u'\u5e93\u514b', u'NR'), (u'\u4ecd', u'AD'),
-             (u'\u662f', u'VC'), (u'\u5f15\u9886', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u8d70\u5411', u'VV'),
-             (u'\u672a\u6765', u'NT'), (u'\u7684', u'DEG'), (u'\u5408\u9002', u'JJ'), (u'\u4eba\u9009', u'NN'),
-             (u'\u3002', u'PU')],
-                (u'\u5e93\u514b', u'\u4ecd', u'\u662f', u'\u5f15\u9886', u'\u82f9\u679c', u'\u8d70\u5411',
-                 u'\u672a\u6765', u'\u7684', u'\u5408\u9002', u'\u4eba\u9009')],
-                [[(u'\u5f53\u7136', u'AD'), (u'\uff0c', u'PU'), (u'\u5e93\u514b', u'NR'), (u'\u4e5f', u'AD'),
-                 (u'\u6ca1\u6709', u'AD'), (u'\u4f4e\u4f30', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u7684', u'DEC'),
-                 (u'\u672a\u6765', u'NT'), (u'\u3002', u'PU')],
-                (u'\u5e93\u514b', u'\u4e5f', u'\u6ca1\u6709', u'\u4f4e\u4f30', u'\u82f9\u679c', u'\u7684', u'\u672a\u6765')],
-                [[(u'\u9c8d\u5c14\u9ed8', u'NR'), (u'\u9000\u4f11', u'VV'), (u'\u6d88\u606f', u'NN'), (u'\u523a\u6fc0', u'VV'),
-                 (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\u53d7', u'LB'),
-                 (u'\u9c8d\u5c14', u'NR'), (u'\u9ed8', u'NT'), (u'\u4e00', u'CD'), (u'\u5e74', u'M'), (u'\u5185', u'LC'),
-                 (u'\u5c06', u'BA'), (u'\u9000\u4f11', u'VV'), (u'\u7684', u'DEC'), (u'\u6d88\u606f', u'NN'),
-                 (u'\u523a\u6fc0', u'NN'), (u'\uff0c', u'PU'), (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'),
-                 (u'\u5468\u4e94', u'NT'), (u'\u5927', u'AD'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\uff0c', u'PU'),
-                 (u'\u62a5', u'VV'), (u'\u6536\u4e8e', u'VV'), (u'34.75', u'CD'), (u'\u7f8e\u5143', u'M'), (u'\u3002', u'PU')],
-                (u'\u5fae\u8f6f', u'\u80a1\u4ef7', u'\u6da8', u'7.29%', u'\u53d7', u'\u9c8d\u5c14', u'\u9ed8', u'\u4e00',
-                 u'\u5e74', u'\u5185', u'\u5c06', u'\u9000\u4f11', u'\u7684', u'\u6d88\u606f', u'\u523a\u6fc0')]]
+    # data = [[[(u'\u4ee5\u4e0b', u'AD'), (u'\u56db', u'CD'), (u'\u5927', u'JJ'), (u'\u56e0\u7d20', u'NN'),
+    #         (u'\u4e5f', u'AD'), (u'\u8868\u660e', u'VV'), (u'\u5e93\u514b', u'NR'), (u'\u4ecd', u'AD'),
+    #          (u'\u662f', u'VC'), (u'\u5f15\u9886', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u8d70\u5411', u'VV'),
+    #          (u'\u672a\u6765', u'NT'), (u'\u7684', u'DEG'), (u'\u5408\u9002', u'JJ'), (u'\u4eba\u9009', u'NN'),
+    #          (u'\u3002', u'PU')],
+    #             (u'\u5e93\u514b', u'\u4ecd', u'\u662f', u'\u5f15\u9886', u'\u82f9\u679c', u'\u8d70\u5411',
+    #              u'\u672a\u6765', u'\u7684', u'\u5408\u9002', u'\u4eba\u9009')],
+    #             [[(u'\u5f53\u7136', u'AD'), (u'\uff0c', u'PU'), (u'\u5e93\u514b', u'NR'), (u'\u4e5f', u'AD'),
+    #              (u'\u6ca1\u6709', u'AD'), (u'\u4f4e\u4f30', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u7684', u'DEC'),
+    #              (u'\u672a\u6765', u'NT'), (u'\u3002', u'PU')],
+    #             (u'\u5e93\u514b', u'\u4e5f', u'\u6ca1\u6709', u'\u4f4e\u4f30', u'\u82f9\u679c', u'\u7684', u'\u672a\u6765')],
+    #             [[(u'\u9c8d\u5c14\u9ed8', u'NR'), (u'\u9000\u4f11', u'VV'), (u'\u6d88\u606f', u'NN'), (u'\u523a\u6fc0', u'VV'),
+    #              (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\u53d7', u'LB'),
+    #              (u'\u9c8d\u5c14', u'NR'), (u'\u9ed8', u'NT'), (u'\u4e00', u'CD'), (u'\u5e74', u'M'), (u'\u5185', u'LC'),
+    #              (u'\u5c06', u'BA'), (u'\u9000\u4f11', u'VV'), (u'\u7684', u'DEC'), (u'\u6d88\u606f', u'NN'),
+    #              (u'\u523a\u6fc0', u'NN'), (u'\uff0c', u'PU'), (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'),
+    #              (u'\u5468\u4e94', u'NT'), (u'\u5927', u'AD'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\uff0c', u'PU'),
+    #              (u'\u62a5', u'VV'), (u'\u6536\u4e8e', u'VV'), (u'34.75', u'CD'), (u'\u7f8e\u5143', u'M'), (u'\u3002', u'PU')],
+    #             (u'\u5fae\u8f6f', u'\u80a1\u4ef7', u'\u6da8', u'7.29%', u'\u53d7', u'\u9c8d\u5c14', u'\u9ed8', u'\u4e00',
+    #              u'\u5e74', u'\u5185', u'\u5c06', u'\u9000\u4f11', u'\u7684', u'\u6d88\u606f', u'\u523a\u6fc0')]]
 
-    # data = read_pickle('/Users/acepor/work/time/data/events_result.pkl')
-    # outf = open('/Users/acepor/work/time/data/output_full7.txt','w')
+    data = read_pickle('/Users/acepor/work/time/data/events_result.pkl')
+    outf = open('/Users/acepor/work/time/data/output_full7.txt','w')
     for line in data:
         sen, event = line
-        print 'sen', ' '.join([a for a, b in sen])
-        print  'event', ' '.join(event)
+        # print 'sen', ' '.join([a for a, b in sen])
+        # print  'event', ' '.join(event)
         e, ne = recover_index(sen, event)
-        print 'e', ' '.join([a for a, b, c in e])
-        print 'ne', ' '.join([a for a, b, c in ne])
-        # re_e = detect_overall(e)
-        # re_ne = detect_overall(ne)
-        # time_score1, distance1, p1 = evaluate_status(re_e, e, 'e')
-        # time_score2, distance2, p2 = evaluate_status(re_ne, e, 'ne')
-        #
-        # total_score = time_score1 + time_score2
-        #
-        # s4 = str(total_score) + ' ' + str(time_score1) + ' ' + str(time_score2)  + '\n'
-        # ss = 'original: ' + ' '.join(' '.join(a) for a, b in sen) + '\n\n'
-        # s1 = 'score ' + str(total_score) + ' e: ' + ', '.join(p1) + ' ne: ' + ', '.join(p2) + '\n'
-        # s2 = ' '.join(k for k in event) + '\n'
-        # print s1; print s2; print s4; print ss
+        # print 'e', ' '.join([a for a, b, c in e])
+        # print 'ne', ' '.join([a for a, b, c in ne])
+        # print e
 
-    #     outf.write(s1)
-    #     outf.write(s4)
-    #     outf.write(s2.encode('utf-8'))
-    #     outf.write(ss.encode('utf-8'))
-    # outf.flush()
-    # outf.close()
+        re_e = detect_overall(e)
+        re_ne = detect_overall(ne)
+        # print re_e
+        # print re_ne
+        time_score1, distance1, p1 = evaluate_status(re_e, e, 'e')
+        time_score2, distance2, p2 = evaluate_status(re_ne, e, 'ne')
+
+        total_score = time_score1 + time_score2
+
+        s4 = str(total_score) + ' ' + str(time_score1) + ' ' + str(time_score2)  + '\n'
+        ss = 'original: ' + ' '.join(' '.join(a) for a, b in sen) + '\n\n'
+        s1 = 'score ' + str(total_score) + ' e: ' + ', '.join(p1) + ' ne: ' + ', '.join(p2) + '\n'
+        s2 = ' '.join(k for k in event) + '\n'
+        print s1; print s2; print s4; print ss
+
+        outf.write(s1)
+        outf.write(s4)
+        outf.write(s2.encode('utf-8'))
+        outf.write(ss.encode('utf-8'))
+    outf.flush()
+    outf.close()
