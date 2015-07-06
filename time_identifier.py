@@ -158,9 +158,12 @@ def recover_index(sen_list, result_tup):
 
 
 cn_date = re.compile(u'(?:(\d{2,4})年)?(?:(\d{1,2})月)?(?:(\d{1,2})日)?')  # ?: not reserve the extracted pattern
+# cn_date_ = re.compile(u'(\d{2,4})年(?:(\d{1,2})月)?(?:(\d{1,2})日)?|(?:(\d{2,4})年)?(\d{1,2})月(?:(\d{1,2})日)?')
 current = str(datetime.now()).split(' ')[0].split('-')
 current_y, current_m, current_d = int(current[0]), int(current[1]), int(current[2])
 
+def not_empty(tup):
+    return tup != ('','','')
 
 def detect_date(clause_tuples, ref_yr=current_y, clause_type='e'):
     '''
@@ -172,9 +175,10 @@ def detect_date(clause_tuples, ref_yr=current_y, clause_type='e'):
         tokens += token
         anchor = index  # anchor is used to indicate the location of clause,
 
+    for line in filter(not_empty, cn_date.findall(tokens)):
 
-    for matched_y, matched_m, matched_d in cn_date.findall(tokens):
-        # if not (matched_y or matched_m or matched_d): continue
+        matched_y, matched_m, matched_d = line
+    # for matched_y, matched_m, matched_d, _, _, _ in cn_date_.findall(tokens):
 
         matched_d = int(matched_d) if matched_d else None # convert day
         matched_m = int(matched_m) if matched_m else None # convert month
@@ -240,109 +244,93 @@ def detect_date(clause_tuples, ref_yr=current_y, clause_type='e'):
 
 ########################################################################
 
-cn_ymd = re.compile(u'((\d{2,4})年)((\d{1,2})月)((\d{1,2})日)')
-cn_ym = re.compile(u'((\d{2,4})年)((\d{1,2})月)')
-cn_y = re.compile(u'((\d{2,4})年)')
-cn_md = re.compile(u'((\d{1,2})月)((\d{1,2})日)')
-cn_m = re.compile(u'((\d{1,2})月)')
-cn_d = re.compile(u'((\d{1,2})日)')
+cn_date_ = re.compile(u'(\d{2,4})年(?:(\d{1,2})月)?(?:(\d{1,2})日)?|(?:(\d{2,4})年)?(\d{1,2})月(?:(\d{1,2})日)?')
 current = str(datetime.now()).split(' ')[0].split('-')
 current_y, current_m, current_d = int(current[0]), int(current[1]), int(current[2])
 
 
-def str_to_int(string):
-    return int(string) if string else None
+def detect_date_(clause_tuples, ref_yr=current_y, clause_type='e'):
+    '''
+    This function only deals with the expressions starting with explicit temporal expressions.
+    '''
 
+    state, pattern, status, tokens = 0, [], '', ''
+    for token, pos, index in clause_tuples:
+        tokens += token
+        anchor = index  # anchor is used to indicate the location of clause,
 
-def convert_2_4(matched_y, ref_yr=current_y):
-    if matched_y and matched_y < 100:
-            m_year = matched_y
-            min_year, max_year = m_year + 1900, m_year + 2000
-            return min_year if max_year - ref_yr > ref_yr - min_year else max_year
+    for line in cn_date_.findall(tokens):
+        y1, m1, d1, y2, m2, d2 = line
+
+        if y1:
+            matched_y = int(y1) if y1 else None # convert day
+            matched_m = int(m1) if m1 else None # convert month
+            matched_d = int(d1) if d1 else None # convert year
+
+            if matched_y and matched_y < 100:
+                m_year = matched_y
+                min_year, max_year = m_year + 1900, m_year + 2000
+                matched_y = min_year if max_year - ref_yr > ref_yr - min_year else max_year
+
+            if matched_y > 1900:
+
+                if matched_y and matched_m is None and matched_d is None:
+                    pattern.append("%s年" %(matched_y))
+                    # pattern.append(str(matched_y) + '年')
+                    state += (current_y - matched_y)
+
+                elif matched_y and matched_m and matched_d is None:
+                    pattern.append("%s年%s月" %(matched_y, matched_m))
+                    # pattern.append(str(matched_y) + '年' + str(matched_m) + '月')
+                    if current_y - matched_y == 0:
+                        state += (current_m - matched_m)
+                    else:
+                        state += (current_y - matched_y)
+
+                elif matched_y and matched_m and matched_d:
+                    pattern.append("%s年%s月%s日" %(matched_y, matched_m, matched_d))
+                    # pattern.append(str(matched_y) + '年' + str(matched_m) + '月' + str(matched_d) + '日')
+                    if current_y - matched_y == 0:
+                        if current_m - matched_m == 0:
+                            state += (current_d - matched_d)
+                        else:
+                            state += (current_m - matched_m)
+                    else:
+                        state += (current_y - matched_y)
+
+        else:
+            matched_m = int(m2) if m2 else None # convert month
+            matched_d = int(d2) if d2 else None # convert year
+
+            if matched_m and matched_d is None:
+                pattern.append("%s月" %(matched_m))
+                # pattern.append(str(matched_m) + '月')
+                state += (current_m - matched_m)
+
+            elif matched_m and matched_d:
+                pattern.append("%s月%s日" %(matched_m, matched_d))
+                # pattern.append(str(matched_m) + '月' + str(matched_d) + '日')
+                if current_m - matched_m == 0:
+                    state += (current_d - matched_d)
+                else:
+                    state += (current_m - matched_m)
+
+            elif matched_m is None and matched_d:
+                pattern.append("%s日" %(matched_d))
+                # pattern.append(str(matched_d) + '日')
+                state += (current_d - matched_d)
+
+    if state > 0:
+        status = -1
+    elif state < 0:
+        status = 1
+
+    if clause_type == 'ne:':
+        status = status/2
     else:
-        return matched_y
+        status = status
 
-
-# def detect_date_(clause_tuples, ref_yr=current_y, clause_type='e'):
-#     '''
-#     This function only deals with the expressions starting with explicit temporal expressions.
-#     '''
-#
-#     state, pattern, status, tokens = 0, '', '', ''
-#     for token, pos, index in clause_tuples:
-#         tokens += token
-#
-#
-#
-#     if state == '':
-#
-#         for _, matched_y, _, matched_m, _, matched_d in cn_ymd.findall(tokens):
-#             if matched_y and matched_m and matched_d:
-#                 pattern = str(matched_y) + '年' + str(matched_m) + '月' + str(matched_d) + '日'
-#                 matched_y, matched_m, matched_d = str_to_int(matched_y), str_to_int(matched_m), str_to_int(matched_d)
-#                 matched_y = convert_2_4(matched_y)
-#                 if current_y - matched_y == 0:
-#                     if current_m - matched_m == 0:
-#                         state = current_d - matched_d
-#                     else:
-#                         state = current_m - matched_m
-#                 else:
-#                     state = current_y - matched_y
-#
-#
-#     elif cn_ym.findall(tokens) is not []:
-#         for _, matched_y, _, matched_m in cn_ym.findall(tokens):
-#             pattern = str(matched_y) + '年' + str(matched_m) + '月'
-#             matched_y, matched_m = str_to_int(matched_y), str_to_int(matched_m)
-#             matched_y = convert_2_4(matched_y)
-#             if current_y - matched_y == 0:
-#                 state = current_m - matched_m
-#             else:
-#                 state = current_y - matched_y
-#             break
-#
-#     elif cn_md.findall() is not []:
-#         for _, matched_m, _, matched_d in cn_md.findall(tokens):
-#             pattern = str(matched_m) + '月' + str(matched_d) + '日'
-#             matched_m, matched_d = str_to_int(matched_m), str_to_int(matched_d)
-#             if current_m - matched_m == 0:
-#                 state = current_d - matched_d
-#             else:
-#                 state = current_m - matched_m
-#             break
-#
-#     elif cn_y.findall() is not []:
-#         for _, matched_y in cn_y.findall(tokens):
-#             if matched_y:
-#                 pattern = str(matched_y) + '年'
-#                 matched_y = str_to_int(matched_y)
-#                 matched_y = convert_2_4(matched_y)
-#                 state = current_y - matched_y
-#             break
-#
-#     elif cn_m.findall() is not []:
-#         for _, matched_m in cn_m.findall(tokens):
-#             pattern = str(matched_m) + '月'
-#             matched_m = str_to_int(matched_m)
-#             state = current_m - matched_m
-#             break
-#
-#     for _, matched_d in cn_d.findall(tokens):
-#         pattern = str(matched_d) + '日'
-#         matched_d = str_to_int(matched_d)
-#         state = current_d - matched_d
-#         break
-#
-#
-#     if state > 0:
-#         status = -1
-#     elif state < 0:
-#         status = 1
-#
-#     if clause_type == 'ne:':
-#         status = status /2
-#
-#     return (status, pattern, u'NT', 0) if status == 1 or status == -1 else None
+    return (status, ', '.join(pattern), u'NT', anchor) if status == 1 or status == -1 else None
 
 ########################################################################
 
@@ -404,8 +392,8 @@ def detect_overall(clause_tuples, type='e'):
     status, matched_tuple, result = '', (), []
 
     result.append(detect_date(clause_tuples, ref_yr=current_y, clause_type=type))
-    result.append(detect_time(clause_tuples, paras=PAST_PARAS))
-    result.append(detect_time(clause_tuples, paras=FUTURE_PARAS))
+    # result.append(detect_time(clause_tuples, paras=PAST_PARAS))
+    # result.append(detect_time(clause_tuples, paras=FUTURE_PARAS))
     # 1 indicates a future event，  -1 indicates a past event
 
     return set([a for a in result if a is not None if len(a) > 1])
@@ -467,7 +455,7 @@ if __name__ == '__main__':
     #              u'\u5e74', u'\u5185', u'\u5c06', u'\u9000\u4f11', u'\u7684', u'\u6d88\u606f', u'\u523a\u6fc0')]]
 
     data = read_pickle('/Users/acepor/work/time/data/events_result.pkl')
-    outf = open('/Users/acepor/work/time/data/output_full10.txt','w')
+    outf = open('/Users/acepor/work/time/data/output_full11.txt','w')
     for line in data:
         sen, event = line
         # print 'sen', ' '.join([a for a, b in sen])
