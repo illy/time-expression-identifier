@@ -176,9 +176,7 @@ def detect_date(clause_tuples, ref_yr=current_y, clause_type='e'):
         anchor = index  # anchor is used to indicate the location of clause,
 
     for line in filter(not_empty, cn_date.findall(tokens)):
-
         matched_y, matched_m, matched_d = line
-    # for matched_y, matched_m, matched_d, _, _, _ in cn_date_.findall(tokens):
 
         matched_d = int(matched_d) if matched_d else None # convert day
         matched_m = int(matched_m) if matched_m else None # convert month
@@ -234,10 +232,7 @@ def detect_date(clause_tuples, ref_yr=current_y, clause_type='e'):
     elif state < 0:
         status = 1
 
-    if clause_type == 'ne:':
-        status = status/2
-    else:
-        status = status
+    status = status/2 if clause_type == 'ne:' else status
 
     return (status, ', '.join(pattern), u'NT', anchor) if status == 1 or status == -1 else None
 
@@ -276,12 +271,10 @@ def detect_date_(clause_tuples, ref_yr=current_y, clause_type='e'):
 
                 if matched_y and matched_m is None and matched_d is None:
                     pattern.append("%s年" %(matched_y))
-                    # pattern.append(str(matched_y) + '年')
                     state += (current_y - matched_y)
 
                 elif matched_y and matched_m and matched_d is None:
                     pattern.append("%s年%s月" %(matched_y, matched_m))
-                    # pattern.append(str(matched_y) + '年' + str(matched_m) + '月')
                     if current_y - matched_y == 0:
                         state += (current_m - matched_m)
                     else:
@@ -289,7 +282,6 @@ def detect_date_(clause_tuples, ref_yr=current_y, clause_type='e'):
 
                 elif matched_y and matched_m and matched_d:
                     pattern.append("%s年%s月%s日" %(matched_y, matched_m, matched_d))
-                    # pattern.append(str(matched_y) + '年' + str(matched_m) + '月' + str(matched_d) + '日')
                     if current_y - matched_y == 0:
                         if current_m - matched_m == 0:
                             state += (current_d - matched_d)
@@ -304,12 +296,10 @@ def detect_date_(clause_tuples, ref_yr=current_y, clause_type='e'):
 
             if matched_m and matched_d is None:
                 pattern.append("%s月" %(matched_m))
-                # pattern.append(str(matched_m) + '月')
                 state += (current_m - matched_m)
 
             elif matched_m and matched_d:
                 pattern.append("%s月%s日" %(matched_m, matched_d))
-                # pattern.append(str(matched_m) + '月' + str(matched_d) + '日')
                 if current_m - matched_m == 0:
                     state += (current_d - matched_d)
                 else:
@@ -317,7 +307,6 @@ def detect_date_(clause_tuples, ref_yr=current_y, clause_type='e'):
 
             elif matched_m is None and matched_d:
                 pattern.append("%s日" %(matched_d))
-                # pattern.append(str(matched_d) + '日')
                 state += (current_d - matched_d)
 
     if state > 0:
@@ -325,10 +314,7 @@ def detect_date_(clause_tuples, ref_yr=current_y, clause_type='e'):
     elif state < 0:
         status = 1
 
-    if clause_type == 'ne:':
-        status = status/2
-    else:
-        status = status
+    status = status/2 if clause_type == 'ne:' else status
 
     return (status, ', '.join(pattern), u'NT', anchor) if status == 1 or status == -1 else None
 
@@ -426,36 +412,8 @@ def evaluate_status(time_set, event_tuple, type='e'):
 
 ########################################################################
 
-
-if __name__ == '__main__':
-    gc.disable()
-    a = now_str(hide_microseconds=False)
-
-    # data = [[[(u'Apple', u'NR'), (u'Watch', u'NN'), (u'\u53d1\u5e03', u'VV'), (u'\u540e', u'LC'), (u'\u82f9\u679c', u'NN'), (u'\u5c06', u'AD'), (u'\u5b8c\u5168', u'AD'), (u'\u4e0d\u540c', u'JJ'), (u'BI', u'NN'), (u'\u4e2d\u6587', u'NN'), (u'\u7ad9', u'VV'), (u'3\u6708', u'NT'), (u'7\u65e5', u'NT'), (u'\u62a5\u9053', u'VV'), (u'\u667a\u80fd', u'NN'), (u'\u624b\u8868', u'NN'), (u'Apple', u'NN'), (u'Watch', u'NN'), (u'\u4ee3\u8868', u'VV'), (u'\u7740', u'AS'), (u'2007\u5e74', u'NT'), (u'\u82f9\u679c', u'NN'), (u'\u63a8\u51fa', u'VV'), (u'\u667a\u80fd', u'NN'), (u'\u624b\u673a', u'NN'), (u'iPhone', u'NN'), (u'\u4ee5\u6765', u'LC'), (u'\u6700\u5927', u'JJ'), (u'\u8d4c\u6ce8', u'NN'), (u'\uff0c', u'PU'), (u'\u4e00\u65e6', u'CS'), (u'\u82f9\u679c', u'NN'), (u'\u4e8e', u'P'), (u'3\u6708', u'NT'), (u'9\u65e5', u'NT'), (u'\u6b63\u5f0f', u'AD'), (u'\u516c\u5e03', u'VV'), (u'Apple', u'NN'), (u'Watch', u'NN'), (u'\u7684', u'DEG'), (u'\u5b9a\u4ef7', u'NN'), (u'\u7b49', u'ETC'), (u'\u7ec6\u8282', u'NN'), (u'\u540e', u'LC'), (u'\uff0c', u'PU'), (u'\u82f9\u679c', u'NN'), (u'\u5c06', u'AD'), (u'\u53d8\u6210', u'VV'), (u'\u5b8c\u5168', u'AD'), (u'\u4e0d\u540c', u'VA'), (u'\u7684', u'DEC'), (u'\u516c\u53f8', u'NN'), (u'\u3002', u'PU')],
-    #         (u'Apple', u'Watch', u'\u53d1\u5e03', u'\u540e', u'\u82f9\u679c', u'\u5c06', u'\u5b8c\u5168', u'\u4e0d\u540c', u'BI', u'\u4e2d\u6587', u'\u7ad9', u'3\u6708', u'7\u65e5', u'\u62a5\u9053', u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch', u'\u4ee3\u8868', u'\u7740', u'2007\u5e74', u'\u82f9\u679c', u'\u63a8\u51fa', u'\u667a\u80fd', u'\u624b\u673a', u'iPhone', u'\u4ee5\u6765', u'\u6700\u5927', u'\u8d4c\u6ce8')],
-    #         [[(u'\u4ee5\u4e0b', u'AD'), (u'\u56db', u'CD'), (u'\u5927', u'JJ'), (u'\u56e0\u7d20', u'NN'),
-    #         (u'\u4e5f', u'AD'), (u'\u8868\u660e', u'VV'), (u'\u5e93\u514b', u'NR'), (u'\u4ecd', u'AD'),
-    #          (u'\u662f', u'VC'), (u'\u5f15\u9886', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u8d70\u5411', u'VV'),
-    #          (u'\u672a\u6765', u'NT'), (u'\u7684', u'DEG'), (u'\u5408\u9002', u'JJ'), (u'\u4eba\u9009', u'NN'),
-    #          (u'\u3002', u'PU')],
-    #             (u'\u5e93\u514b', u'\u4ecd', u'\u662f', u'\u5f15\u9886', u'\u82f9\u679c', u'\u8d70\u5411',
-    #              u'\u672a\u6765', u'\u7684', u'\u5408\u9002', u'\u4eba\u9009')],
-    #             [[(u'\u5f53\u7136', u'AD'), (u'\uff0c', u'PU'), (u'\u5e93\u514b', u'NR'), (u'\u4e5f', u'AD'),
-    #              (u'\u6ca1\u6709', u'AD'), (u'\u4f4e\u4f30', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u7684', u'DEC'),
-    #              (u'\u672a\u6765', u'NT'), (u'\u3002', u'PU')],
-    #             (u'\u5e93\u514b', u'\u4e5f', u'\u6ca1\u6709', u'\u4f4e\u4f30', u'\u82f9\u679c', u'\u7684', u'\u672a\u6765')],
-    #             [[(u'\u9c8d\u5c14\u9ed8', u'NR'), (u'\u9000\u4f11', u'VV'), (u'\u6d88\u606f', u'NN'), (u'\u523a\u6fc0', u'VV'),
-    #              (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\u53d7', u'LB'),
-    #              (u'\u9c8d\u5c14', u'NR'), (u'\u9ed8', u'NT'), (u'\u4e00', u'CD'), (u'\u5e74', u'M'), (u'\u5185', u'LC'),
-    #              (u'\u5c06', u'BA'), (u'\u9000\u4f11', u'VV'), (u'\u7684', u'DEC'), (u'\u6d88\u606f', u'NN'),
-    #              (u'\u523a\u6fc0', u'NN'), (u'\uff0c', u'PU'), (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'),
-    #              (u'\u5468\u4e94', u'NT'), (u'\u5927', u'AD'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\uff0c', u'PU'),
-    #              (u'\u62a5', u'VV'), (u'\u6536\u4e8e', u'VV'), (u'34.75', u'CD'), (u'\u7f8e\u5143', u'M'), (u'\u3002', u'PU')],
-    #             (u'\u5fae\u8f6f', u'\u80a1\u4ef7', u'\u6da8', u'7.29%', u'\u53d7', u'\u9c8d\u5c14', u'\u9ed8', u'\u4e00',
-    #              u'\u5e74', u'\u5185', u'\u5c06', u'\u9000\u4f11', u'\u7684', u'\u6d88\u606f', u'\u523a\u6fc0')]]
-
-    data = read_pickle('/Users/acepor/work/time/data/events_result.pkl')
-    outf = open('/Users/acepor/work/time/data/output_full11.txt','w')
+def test(data, outfile, ):
+    outf = open(outfile,'w')
     for line in data:
         sen, event = line
         # print 'sen', ' '.join([a for a, b in sen])
@@ -485,3 +443,36 @@ if __name__ == '__main__':
         outf.write(ss.encode('utf-8'))
     outf.flush()
     outf.close()
+
+########################################################################
+
+
+if __name__ == '__main__':
+    gc.disable()
+    a = now_str(hide_microseconds=False)
+
+    # data = [[[(u'Apple', u'NR'), (u'Watch', u'NN'), (u'\u53d1\u5e03', u'VV'), (u'\u540e', u'LC'), (u'\u82f9\u679c', u'NN'), (u'\u5c06', u'AD'), (u'\u5b8c\u5168', u'AD'), (u'\u4e0d\u540c', u'JJ'), (u'BI', u'NN'), (u'\u4e2d\u6587', u'NN'), (u'\u7ad9', u'VV'), (u'3\u6708', u'NT'), (u'7\u65e5', u'NT'), (u'\u62a5\u9053', u'VV'), (u'\u667a\u80fd', u'NN'), (u'\u624b\u8868', u'NN'), (u'Apple', u'NN'), (u'Watch', u'NN'), (u'\u4ee3\u8868', u'VV'), (u'\u7740', u'AS'), (u'2007\u5e74', u'NT'), (u'\u82f9\u679c', u'NN'), (u'\u63a8\u51fa', u'VV'), (u'\u667a\u80fd', u'NN'), (u'\u624b\u673a', u'NN'), (u'iPhone', u'NN'), (u'\u4ee5\u6765', u'LC'), (u'\u6700\u5927', u'JJ'), (u'\u8d4c\u6ce8', u'NN'), (u'\uff0c', u'PU'), (u'\u4e00\u65e6', u'CS'), (u'\u82f9\u679c', u'NN'), (u'\u4e8e', u'P'), (u'3\u6708', u'NT'), (u'9\u65e5', u'NT'), (u'\u6b63\u5f0f', u'AD'), (u'\u516c\u5e03', u'VV'), (u'Apple', u'NN'), (u'Watch', u'NN'), (u'\u7684', u'DEG'), (u'\u5b9a\u4ef7', u'NN'), (u'\u7b49', u'ETC'), (u'\u7ec6\u8282', u'NN'), (u'\u540e', u'LC'), (u'\uff0c', u'PU'), (u'\u82f9\u679c', u'NN'), (u'\u5c06', u'AD'), (u'\u53d8\u6210', u'VV'), (u'\u5b8c\u5168', u'AD'), (u'\u4e0d\u540c', u'VA'), (u'\u7684', u'DEC'), (u'\u516c\u53f8', u'NN'), (u'\u3002', u'PU')],
+    #         (u'Apple', u'Watch', u'\u53d1\u5e03', u'\u540e', u'\u82f9\u679c', u'\u5c06', u'\u5b8c\u5168', u'\u4e0d\u540c', u'BI', u'\u4e2d\u6587', u'\u7ad9', u'3\u6708', u'7\u65e5', u'\u62a5\u9053', u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch', u'\u4ee3\u8868', u'\u7740', u'2007\u5e74', u'\u82f9\u679c', u'\u63a8\u51fa', u'\u667a\u80fd', u'\u624b\u673a', u'iPhone', u'\u4ee5\u6765', u'\u6700\u5927', u'\u8d4c\u6ce8')],
+    #         [[(u'\u4ee5\u4e0b', u'AD'), (u'\u56db', u'CD'), (u'\u5927', u'JJ'), (u'\u56e0\u7d20', u'NN'),
+    #         (u'\u4e5f', u'AD'), (u'\u8868\u660e', u'VV'), (u'\u5e93\u514b', u'NR'), (u'\u4ecd', u'AD'),
+    #          (u'\u662f', u'VC'), (u'\u5f15\u9886', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u8d70\u5411', u'VV'),
+    #          (u'\u672a\u6765', u'NT'), (u'\u7684', u'DEG'), (u'\u5408\u9002', u'JJ'), (u'\u4eba\u9009', u'NN'),
+    #          (u'\u3002', u'PU')],
+    #             (u'\u5e93\u514b', u'\u4ecd', u'\u662f', u'\u5f15\u9886', u'\u82f9\u679c', u'\u8d70\u5411',
+    #              u'\u672a\u6765', u'\u7684', u'\u5408\u9002', u'\u4eba\u9009')],
+    #             [[(u'\u5f53\u7136', u'AD'), (u'\uff0c', u'PU'), (u'\u5e93\u514b', u'NR'), (u'\u4e5f', u'AD'),
+    #              (u'\u6ca1\u6709', u'AD'), (u'\u4f4e\u4f30', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u7684', u'DEC'),
+    #              (u'\u672a\u6765', u'NT'), (u'\u3002', u'PU')],
+    #             (u'\u5e93\u514b', u'\u4e5f', u'\u6ca1\u6709', u'\u4f4e\u4f30', u'\u82f9\u679c', u'\u7684', u'\u672a\u6765')],
+    #             [[(u'\u9c8d\u5c14\u9ed8', u'NR'), (u'\u9000\u4f11', u'VV'), (u'\u6d88\u606f', u'NN'), (u'\u523a\u6fc0', u'VV'),
+    #              (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\u53d7', u'LB'),
+    #              (u'\u9c8d\u5c14', u'NR'), (u'\u9ed8', u'NT'), (u'\u4e00', u'CD'), (u'\u5e74', u'M'), (u'\u5185', u'LC'),
+    #              (u'\u5c06', u'BA'), (u'\u9000\u4f11', u'VV'), (u'\u7684', u'DEC'), (u'\u6d88\u606f', u'NN'),
+    #              (u'\u523a\u6fc0', u'NN'), (u'\uff0c', u'PU'), (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'),
+    #              (u'\u5468\u4e94', u'NT'), (u'\u5927', u'AD'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\uff0c', u'PU'),
+    #              (u'\u62a5', u'VV'), (u'\u6536\u4e8e', u'VV'), (u'34.75', u'CD'), (u'\u7f8e\u5143', u'M'), (u'\u3002', u'PU')],
+    #             (u'\u5fae\u8f6f', u'\u80a1\u4ef7', u'\u6da8', u'7.29%', u'\u53d7', u'\u9c8d\u5c14', u'\u9ed8', u'\u4e00',
+    #              u'\u5e74', u'\u5185', u'\u5c06', u'\u9000\u4f11', u'\u7684', u'\u6d88\u606f', u'\u523a\u6fc0')]]
+
+    data = read_pickle('/Users/acepor/work/time/data/events_result.pkl')
+    test(data, '/Users/acepor/work/time/data/output_full12.txt')
