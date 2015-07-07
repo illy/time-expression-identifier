@@ -229,10 +229,12 @@ def detect_date(clause_tuples, ref_yr=current_y, clause_type='e'):
         status = -1
     elif state < 0:
         status = 1
+    # use the accumulated state to calculate the status, if state > 0, then the status is 'done' (aka -1), else to do (1).
 
     status = status/2 if clause_type == 'ne:' else status
+    # if it is a non-event clause, then the status is given a lower score, otherwise keeps the original score.
 
-    return (status, ', '.join(pattern), u'NT', anchor) if status == 1 or status == -1 else None
+    return (status, ', '.join(pattern), u'NT', anchor) if status == 1 or status == -1 or status == 0.5 or status == -0.5 else None
 
 
 ########################################################################
@@ -313,10 +315,12 @@ def detect_date_(clause_tuples, ref_yr=current_y, clause_type='e'):
         status = -1
     elif state < 0:
         status = 1
+    # use the accumulated state to calculate the status, if state > 0, then the status is 'done' (aka -1), else to do (1).
 
     status = status/2 if clause_type == 'ne:' else status
+    # if it is a non-event clause, then the status is given a lower score, otherwise keeps the original score.
 
-    return (status, ', '.join(pattern), u'NT', anchor) if status == 1 or status == -1 else None
+    return (status, ', '.join(pattern), u'NT', anchor) if status == 1 or status == -1 or status == 0.5 or status == -0.5 else None
 
 ########################################################################
 
