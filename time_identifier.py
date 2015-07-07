@@ -5,7 +5,7 @@ __author__ = 'acepor'
 import gc
 from my_tools import now_str
 from datetime import datetime
-import re
+import re2 as re
 from pickle import load
 
 
@@ -156,9 +156,7 @@ def recover_index(sen_list, result_tup):
 
 ########################################################################
 
-
 cn_date = re.compile(u'(?:(\d{2,4})年)?(?:(\d{1,2})月)?(?:(\d{1,2})日)?')  # ?: not reserve the extracted pattern
-# cn_date_ = re.compile(u'(\d{2,4})年(?:(\d{1,2})月)?(?:(\d{1,2})日)?|(?:(\d{2,4})年)?(\d{1,2})月(?:(\d{1,2})日)?')
 current = str(datetime.now()).split(' ')[0].split('-')
 current_y, current_m, current_d = int(current[0]), int(current[1]), int(current[2])
 
@@ -239,7 +237,8 @@ def detect_date(clause_tuples, ref_yr=current_y, clause_type='e'):
 
 ########################################################################
 
-cn_date_ = re.compile(u'(\d{2,4})年(?:(\d{1,2})月)?(?:(\d{1,2})日)?|(?:(\d{2,4})年)?(\d{1,2})月(?:(\d{1,2})日)?')
+pre_cn_date = re.compile(u'((?:\d{1,4}[年月日]){1,3})')
+cn_date_ = re.compile(u'(\d{2,4})年(?:(\d{1,2})月(?:(\d{1,2})日)?)?|(\d{1,2})月(?:(\d{1,2})日)?')
 current = str(datetime.now()).split(' ')[0].split('-')
 current_y, current_m, current_d = int(current[0]), int(current[1]), int(current[2])
 
@@ -254,60 +253,61 @@ def detect_date_(clause_tuples, ref_yr=current_y, clause_type='e'):
         tokens += token
         anchor = index  # anchor is used to indicate the location of clause,
 
-    for line in cn_date_.findall(tokens):
-        y1, m1, d1, y2, m2, d2 = line
+    for item in pre_cn_date.findall(tokens):
+        for line in cn_date_.findall(item):
+            y1, m1, d1, m2, d2 = line
 
-        if y1:
-            matched_y = int(y1) if y1 else None # convert day
-            matched_m = int(m1) if m1 else None # convert month
-            matched_d = int(d1) if d1 else None # convert year
+            if y1:
+                matched_y = int(y1) if y1 else None # convert day
+                matched_m = int(m1) if m1 else None # convert month
+                matched_d = int(d1) if d1 else None # convert year
 
-            if matched_y and matched_y < 100:
-                m_year = matched_y
-                min_year, max_year = m_year + 1900, m_year + 2000
-                matched_y = min_year if max_year - ref_yr > ref_yr - min_year else max_year
+                if matched_y and matched_y < 100:
+                    m_year = matched_y
+                    min_year, max_year = m_year + 1900, m_year + 2000
+                    matched_y = min_year if max_year - ref_yr > ref_yr - min_year else max_year
 
-            if matched_y > 1900:
+                if matched_y > 1900:
 
-                if matched_y and matched_m is None and matched_d is None:
-                    pattern.append("%s年" %(matched_y))
-                    state += (current_y - matched_y)
-
-                elif matched_y and matched_m and matched_d is None:
-                    pattern.append("%s年%s月" %(matched_y, matched_m))
-                    if current_y - matched_y == 0:
-                        state += (current_m - matched_m)
-                    else:
+                    if matched_y and matched_m is None and matched_d is None:
+                        pattern.append("%s年" %(matched_y))
                         state += (current_y - matched_y)
 
-                elif matched_y and matched_m and matched_d:
-                    pattern.append("%s年%s月%s日" %(matched_y, matched_m, matched_d))
-                    if current_y - matched_y == 0:
-                        if current_m - matched_m == 0:
-                            state += (current_d - matched_d)
-                        else:
+                    elif matched_y and matched_m and matched_d is None:
+                        pattern.append("%s年%s月" %(matched_y, matched_m))
+                        if current_y - matched_y == 0:
                             state += (current_m - matched_m)
-                    else:
-                        state += (current_y - matched_y)
+                        else:
+                            state += (current_y - matched_y)
 
-        else:
-            matched_m = int(m2) if m2 else None # convert month
-            matched_d = int(d2) if d2 else None # convert year
+                    elif matched_y and matched_m and matched_d:
+                        pattern.append("%s年%s月%s日" %(matched_y, matched_m, matched_d))
+                        if current_y - matched_y == 0:
+                            if current_m - matched_m == 0:
+                                state += (current_d - matched_d)
+                            else:
+                                state += (current_m - matched_m)
+                        else:
+                            state += (current_y - matched_y)
 
-            if matched_m and matched_d is None:
-                pattern.append("%s月" %(matched_m))
-                state += (current_m - matched_m)
+            else:
+                matched_m = int(m2) if m2 else None # convert month
+                matched_d = int(d2) if d2 else None # convert year
 
-            elif matched_m and matched_d:
-                pattern.append("%s月%s日" %(matched_m, matched_d))
-                if current_m - matched_m == 0:
-                    state += (current_d - matched_d)
-                else:
+                if matched_m and matched_d is None:
+                    pattern.append("%s月" %(matched_m))
                     state += (current_m - matched_m)
 
-            elif matched_m is None and matched_d:
-                pattern.append("%s日" %(matched_d))
-                state += (current_d - matched_d)
+                elif matched_m and matched_d:
+                    pattern.append("%s月%s日" %(matched_m, matched_d))
+                    if current_m - matched_m == 0:
+                        state += (current_d - matched_d)
+                    else:
+                        state += (current_m - matched_m)
+
+                elif matched_m is None and matched_d:
+                    pattern.append("%s日" %(matched_d))
+                    state += (current_d - matched_d)
 
     if state > 0:
         status = -1
@@ -377,7 +377,7 @@ def detect_overall(clause_tuples, type='e'):
 
     status, matched_tuple, result = '', (), []
 
-    result.append(detect_date(clause_tuples, ref_yr=current_y, clause_type=type))
+    result.append(detect_date_(clause_tuples, ref_yr=current_y, clause_type=type))
     # result.append(detect_time(clause_tuples, paras=PAST_PARAS))
     # result.append(detect_time(clause_tuples, paras=FUTURE_PARAS))
     # 1 indicates a future event，  -1 indicates a past event
