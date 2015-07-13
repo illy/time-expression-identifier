@@ -16,15 +16,25 @@ from pickle import load
 TIME_MORPHEMES = ['年#NT', '年#NN', '年#M', '年#AD', '年#JJ', '年内#NT',
                   '月#NT', '月#NN', '月#M', '月#CD', '月份#NN', '月份#NT', '月#AD',
                   '周#NN', '周#NT', '周#M', '周#VV', '周#JJ', '礼拜#NN', '礼拜#NT', '礼拜#M', '星期#NN', '星期#NT',
+                  '周一', '周二', '周三', '周四', '周五', '周六', '周日',
+                  '礼拜一', '礼拜二', '礼拜三', '礼拜四', '礼拜五', '礼拜六', '礼拜日',
+                  '星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日',
                   '日#NN', '日#NT', '日#AD','日#M', '天#NN', '天#NT', '天#AD', '天#M', '夜#AD', '夜#NT',
                   '节#NN', '节#NT', '底#NN', '底#NT', '初#NN', '初#NT',
                   '季度#NN', '季度#NT', '季#NN', '季#NT',
                   '分#M', '分钟#M', '小时#M', '片刻#AD']
 
-PAST_PREFIX = ['前#DT', '前#LC', '前#JJ', '前面#LC', '上#DT', '上#LC', '上个#DT', '过去#NT', '过去#NN', '过去#NT 的#DEG']
+PAST_PREFIX = ['前#DT', '前#LC', '前#JJ', '前面#LC', '上#DT', '上#LC', '上个#DT', '过去#NT', '过去#NN', '过去#NT 的#DEG',
+               '本#DT', '上#DT 个#M']
 
-PAST_SUFFIX = ['前#DT', '前#LC', '前#JJ', '前#AD',
-               '底#NN', '底#NT', '初#NN', '初#NT', '初#LC', '以来#LC', '以来#AD']
+PAST_SUFFIX = ['前#DT', '前#LC', '前#JJ', '前#AD','以来#LC', '以来#AD']
+                # '底#NN', '底#NT', '初#NN', '初#NT', '初#LC',
+
+FUTURE_PREFIX = ['后#DT', '后#JJ', '下#DT', '后面#LC', '下个#DT', '下#DT 个#M']
+
+FUTURE_SUFFIX = ['后#LC']
+
+########################################################################
 
 PAST_AD = ['曾经#AD', '曾#AD', '最初#AD', '此前#AD', '之前#AD', '先前#AD', '往前#AD', '日前#AD', '早前#AD',
            '早日#AD', '上次#AD', '不久前#AD', '已经#AD', '已#AD', '早已#AD', '早就#AD', '以前#AD', '事先#AD4'
@@ -63,14 +73,14 @@ PAST_NR = ['刚过去#NR']
 PAST_VV = ['昨天晚上#VV', '昨天上午#VV', '过去#VV 的#DEC', '去年同期#VV', '去年底#VV']
 
 PRESENT_NT = ['目前#NT', '当前#NT', '现在#NT', '如今#NT', '现时#NT', '此刻#NT', '同时#NT', '现阶段#NT', '现时#NT',
-              '此时#NT', '当今#NT', '当下#NT', '眼下#NT', '时下#NT', '今时#NT', '现#NT', '此时#NT', '现今#NT',
-              '同年#NT', '今夏#NT', '本季#NT', '当季#NT',
+              '此时#NT', '当今#NT', '当下#NT', '眼下#NT', '时下#NT', '今时#NT', '现#NT', '此时#NT', '现今#NT', '目前#NT',
+              '同年#NT', '今夏#NT', '本季#NT', '当季#NT', '今年#NT',
               '本月#NT', '当月#NT', '同月#NT', '当月份#NT',
               '本周#NT', '当周#NT', '本周末#NT',
               '今晚#NT', '今日#NT', '今天#NT', '当天#NT', '今#NT', '即日#NT', '今早#NT', '当日#NT', '当晚#NT', '今晨#NT']
-PRESENT_NN = ['当下#NN', '现阶段#NN', '目前#NN']
+PRESENT_NN = ['当下#NN', '现阶段#NN', '目前#NN', '今年#NN', '今天#NN',]
 
-PRESENT_AD = ['正在#AD', '正#AD']
+PRESENT_AD = ['正在#AD', '正#AD', '目前#AD']
 
 PAST_PHRASES = PAST_AD + PAST_CD + PAST_M + PAST_NN + PAST_NR + PAST_NT + PAST_VV + PRESENT_NT + PRESENT_NN + PRESENT_AD
 
@@ -84,10 +94,6 @@ FUTURE_NT = ['今后#NT', '未来#NT', '将来#NT', '后来#NT', '此后#NT', '�
              '下周#NT',
              '明天#NT', '次日#NT', '后天#NT', '明后天#NT', '翌日#NT', '明晚#NT', '明早#NT']
 
-FUTURE_PREFIX = ['后#DT', '后#JJ', '下#DT']
-
-FUTURE_SUFFIX = ['后#LC']
-
 FUTURE_AD = ['此后#AD', '稍后#AD', '而后#AD', '日后#AD', '事后#AD', '在此之后#AD',
              '不久以后#AD', '之后#AD', '即将#AD', '将#AD', '将会#AD', '将要#AD', '后来#AD', '以后#AD']
 
@@ -99,8 +105,8 @@ FUTURE_PHRASES = FUTURE_AD + FUTURE_NN + FUTURE_NT
 ########################################################################
 
 
-CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS', '除非#CS', '假如#CS', '要是#CS',
-                  '倘若#CS', '只有#CS', '若是#CS', '如#CS', '假如说#CS', '万一#CS', '假使#CS', '若说#CS']
+# CONDITION_CONJ = ['如果#CS', '只要#CS', '一旦#CS', '若#CS', '如果说#CS', '除非#CS', '假如#CS', '要是#CS',
+#                   '倘若#CS', '只有#CS', '若是#CS', '如#CS', '假如说#CS', '万一#CS', '假使#CS', '若说#CS']
 
 
 ########################################################################
@@ -119,38 +125,43 @@ def recover_index(sen_list, result_tup):
     full_list = [item + (ind,) for ind, item in enumerate(sen_list)]
 
     for item, tag, index in full_list:
-        if item[0] == u'\uff0c':  # u'\uff0c' stands for the full-width comma
+        if item[0] == u'\uff0c' or item[0] == u'\u002c':  # u'\uff0c' stands for the full-width comma
             comma_index.append(index)
     comma_index.extend([full_list[-1][2]])  # capture all commas in the sentence
 
-    i, j = 0, 0
-    result, result_size = [], 0
-    while i < len(sen_list):
-        item = sen_list[i][0]
-        if item == result_tup[j:j+1][0]:
-            j += 1
-            result.append((sen_list[i][0], i))  # extract the matched tuple
-            result_size += 1
-        else:
-            result, result_size, j = [], 0, 0
-        i += 1
-        if result_size == len(result_tup): break
-
-    min_comma, max_comma = result[0][1], result[-1][1]  # capture the boundaries of the event tuple
-
-    k = 0
-    while k < len(comma_index)-1:
-        left_comma, right_comma = comma_index[k], comma_index[k+1]  # set the boundaries according to the comma list
-        if left_comma <= min_comma <= right_comma:
-            if full_list[left_comma-1] == u'\uff0c':
-                event_clause = full_list[left_comma+1: right_comma]  # exclude the left comma
-                non_event_clause = full_list[0:left_comma+1]
+    if comma_index != []:
+        i, j = 0, 0
+        cores, core_size = [], 0
+        while i < len(sen_list):
+            item = sen_list[i][0]
+            if item == result_tup[j:j+1][0]:
+                j += 1
+                cores.append((sen_list[i][0], i))  # extract the matched tuple
+                core_size += 1
             else:
-                event_clause = full_list[left_comma+1: right_comma]
-                non_event_clause = full_list[0:left_comma]
-            non_event_clause.extend(full_list[right_comma+1:])
-            break
-        k += 1
+                cores, core_size, j = [], 0, 0
+            i += 1
+            if core_size == len(result_tup): break
+
+        min_comma, max_comma = cores[0][1], cores[-1][1]  # capture the boundaries of the event tuple
+
+        k = 0
+        while k < len(comma_index)-1:
+            left_comma, right_comma = comma_index[k], comma_index[k+1]  # set the boundaries according to the comma list
+            if left_comma <= min_comma <= right_comma:
+                if full_list[left_comma-1] == u'\uff0c' or full_list[left_comma-1] == u'\u002c':  # The event clause is in the middle of the full sentence
+                    event_clause = full_list[left_comma+1: right_comma]  # exclude the left comma
+                    non_event_clause = full_list[0:left_comma+1]
+                else:  # The event clause starts from the beginning of the full sentence.
+                    event_clause = full_list[left_comma: right_comma]
+                    non_event_clause = full_list[0:left_comma]
+                non_event_clause.extend(full_list[right_comma+1:])
+                break
+            k += 1
+
+    else:  # If the full sentence only has one clause.
+        event_clause = full_list
+        non_event_clause = []
 
     return event_clause, non_event_clause
 
@@ -201,20 +212,28 @@ def detect_date(clause_tuples, ref_yr=current_y, clause_type='e'):
 
             state += matched_time - current_time
 
-    state = state/2 if clause_type == 'ne:' else state
+    if state > 0:
+        status = 1
+    elif state == 0:
+        status = 0
+    else:
+        status = -1
+
+    status = state/2 if clause_type == 'ne:' else status
     # if it is a non-event clause, then the status is given a lower score, otherwise keeps the original score.
 
-    return (state, ', '.join(pattern), u'NT', anchor) if state else None
+    return (status, ', '.join(pattern), u'NT', anchor) if state else None
 
 ########################################################################
 
 
 PAST_PARAS = (PAST_PHRASES, PAST_SUFFIX, PAST_PREFIX, -1)
 FUTURE_PARAS = (FUTURE_PHRASES, FUTURE_SUFFIX, FUTURE_PREFIX, 1)
+# 1 indicates a future event，  -1 indicates a past event
 
 def detect_time(clause, paras = PAST_PARAS):
     t_phrases, prefix, suffix, state = paras
-    status, matched_tuple = '', ()
+    status, matched_list = '', []
     possed_tokens = []
 
     for token, pos, index in clause:
@@ -224,36 +243,41 @@ def detect_time(clause, paras = PAST_PARAS):
         if status == '':
             for item in possed_tokens:
                 if item in t_phrases:
-                    status, matched_tuple = 'PE', (token, pos, index)
+                    status = 'TIME_PHR'
+                    matched_list.append((token, pos, index))
                     break
                 elif item in TIME_MORPHEMES:
-                    status = 'TW'
+                    status = 'TIME_WORD'
                     break
                 elif item in prefix:
-                    status = 'TP'
+                    status = 'TIME_PRE'
                     break
                 else:
                     status = ''
 
-        elif status == 'TW':
+        elif status == 'TIME_WORD':
             for item in possed_tokens:
                 if item in suffix:
-                    status, matched_tuple = 'TWTS', (token, pos, index)
+                    status = 'WORD_SUF'
+                    matched_list.append((token, pos, index))
                     break
                 else:
                     status = ''
 
-        elif status == 'TP':
+        elif status == 'TIME_PRE':
             for item in possed_tokens:
                 if item in TIME_MORPHEMES:
-                    status, matched_tuple = 'TPTW', (token, pos, index)
+                    status = 'PRE_WORD'
+                    matched_list.append((token, pos, index))
+
                     break
                 else:
                     status = ''
 
-    if status == 'PE' or status == 'TWTS' or status == 'TPTW':
+    if status == 'TIME_PHR' or status == 'WORD_SUF' or status == 'PRE_WORD':
         status = state
-        return (status, ) + matched_tuple
+        return (status, ', '.join(i[0] for i in matched_list),
+                ', '.join(i[1] for i in matched_list), ', '.join(str(i[2]) for i in matched_list))
     else:
         return None
 
@@ -268,7 +292,6 @@ def detect_overall(clause_tuples, type='e'):
     result.append(detect_date(clause_tuples, ref_yr=current_y, clause_type=type))
     result.append(detect_time(clause_tuples, paras=PAST_PARAS))
     result.append(detect_time(clause_tuples, paras=FUTURE_PARAS))
-    # 1 indicates a future event，  -1 indicates a past event
 
     return set([a for a in result if a is not None if len(a) > 1])
 
@@ -304,6 +327,31 @@ def test(data, outfile, ):
     outf = open(outfile,'w')
     for line in data:
         sen, event = line
+        e, ne = recover_index(sen, event)
+
+        re_e = detect_overall(e, 'e')
+        re_ne = detect_overall(ne, 'ne')
+        time_score1, distance1, p1 = evaluate_status(re_e, e, 'e')
+        time_score2, distance2, p2 = evaluate_status(re_ne, e, 'ne')
+
+
+        total_score = time_score1 + time_score2
+
+        s4 = str(total_score) + ' ' + str(time_score1) + ' ' + str(time_score2)  + '\n'
+        ss = 'original: ' + ' '.join(''.join(a) for a, b in sen) + '\n\n'
+        s1 = 'score ' + str(total_score) + ' e: ' + ', '.join(p1) + ' ne: ' + ', '.join(p2) + '\n'
+        s2 = ' '.join(k for k in event) + '\n'
+
+        outf.write(s1)
+        outf.write(s4)
+        outf.write(s2.encode('utf-8'))
+        outf.write(ss.encode('utf-8'))
+    outf.flush()
+    outf.close()
+
+def test_(data):
+    for line in data:
+        sen, event = line
         # print 'sen', ' '.join([a for a, b in sen])
         # print  'event', ' '.join(event)
         e, ne = recover_index(sen, event)
@@ -323,14 +371,7 @@ def test(data, outfile, ):
         ss = 'original: ' + ' '.join(''.join(a) for a, b in sen) + '\n\n'
         s1 = 'score ' + str(total_score) + ' e: ' + ', '.join(p1) + ' ne: ' + ', '.join(p2) + '\n'
         s2 = ' '.join(k for k in event) + '\n'
-        # print s1; print s2; print s4; print ss
-
-        outf.write(s1)
-        outf.write(s4)
-        outf.write(s2.encode('utf-8'))
-        outf.write(ss.encode('utf-8'))
-    outf.flush()
-    outf.close()
+        print s1; print s2; print s4; print ss
 
 ########################################################################
 
@@ -339,28 +380,30 @@ if __name__ == '__main__':
     gc.disable()
     a = now_str(hide_microseconds=False)
 
-    # data = [[[(u'Apple', u'NR'), (u'Watch', u'NN'), (u'\u53d1\u5e03', u'VV'), (u'\u540e', u'LC'), (u'\u82f9\u679c', u'NN'), (u'\u5c06', u'AD'), (u'\u5b8c\u5168', u'AD'), (u'\u4e0d\u540c', u'JJ'), (u'BI', u'NN'), (u'\u4e2d\u6587', u'NN'), (u'\u7ad9', u'VV'), (u'3\u6708', u'NT'), (u'7\u65e5', u'NT'), (u'\u62a5\u9053', u'VV'), (u'\u667a\u80fd', u'NN'), (u'\u624b\u8868', u'NN'), (u'Apple', u'NN'), (u'Watch', u'NN'), (u'\u4ee3\u8868', u'VV'), (u'\u7740', u'AS'), (u'2007\u5e74', u'NT'), (u'\u82f9\u679c', u'NN'), (u'\u63a8\u51fa', u'VV'), (u'\u667a\u80fd', u'NN'), (u'\u624b\u673a', u'NN'), (u'iPhone', u'NN'), (u'\u4ee5\u6765', u'LC'), (u'\u6700\u5927', u'JJ'), (u'\u8d4c\u6ce8', u'NN'), (u'\uff0c', u'PU'), (u'\u4e00\u65e6', u'CS'), (u'\u82f9\u679c', u'NN'), (u'\u4e8e', u'P'), (u'3\u6708', u'NT'), (u'9\u65e5', u'NT'), (u'\u6b63\u5f0f', u'AD'), (u'\u516c\u5e03', u'VV'), (u'Apple', u'NN'), (u'Watch', u'NN'), (u'\u7684', u'DEG'), (u'\u5b9a\u4ef7', u'NN'), (u'\u7b49', u'ETC'), (u'\u7ec6\u8282', u'NN'), (u'\u540e', u'LC'), (u'\uff0c', u'PU'), (u'\u82f9\u679c', u'NN'), (u'\u5c06', u'AD'), (u'\u53d8\u6210', u'VV'), (u'\u5b8c\u5168', u'AD'), (u'\u4e0d\u540c', u'VA'), (u'\u7684', u'DEC'), (u'\u516c\u53f8', u'NN'), (u'\u3002', u'PU')],
-    #         (u'Apple', u'Watch', u'\u53d1\u5e03', u'\u540e', u'\u82f9\u679c', u'\u5c06', u'\u5b8c\u5168', u'\u4e0d\u540c', u'BI', u'\u4e2d\u6587', u'\u7ad9', u'3\u6708', u'7\u65e5', u'\u62a5\u9053', u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch', u'\u4ee3\u8868', u'\u7740', u'2007\u5e74', u'\u82f9\u679c', u'\u63a8\u51fa', u'\u667a\u80fd', u'\u624b\u673a', u'iPhone', u'\u4ee5\u6765', u'\u6700\u5927', u'\u8d4c\u6ce8')],
-    #         [[(u'\u4ee5\u4e0b', u'AD'), (u'\u56db', u'CD'), (u'\u5927', u'JJ'), (u'\u56e0\u7d20', u'NN'),
-    #         (u'\u4e5f', u'AD'), (u'\u8868\u660e', u'VV'), (u'\u5e93\u514b', u'NR'), (u'\u4ecd', u'AD'),
-    #          (u'\u662f', u'VC'), (u'\u5f15\u9886', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u8d70\u5411', u'VV'),
-    #          (u'\u672a\u6765', u'NT'), (u'\u7684', u'DEG'), (u'\u5408\u9002', u'JJ'), (u'\u4eba\u9009', u'NN'),
-    #          (u'\u3002', u'PU')],
-    #             (u'\u5e93\u514b', u'\u4ecd', u'\u662f', u'\u5f15\u9886', u'\u82f9\u679c', u'\u8d70\u5411',
-    #              u'\u672a\u6765', u'\u7684', u'\u5408\u9002', u'\u4eba\u9009')],
-    #             [[(u'\u5f53\u7136', u'AD'), (u'\uff0c', u'PU'), (u'\u5e93\u514b', u'NR'), (u'\u4e5f', u'AD'),
-    #              (u'\u6ca1\u6709', u'AD'), (u'\u4f4e\u4f30', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u7684', u'DEC'),
-    #              (u'\u672a\u6765', u'NT'), (u'\u3002', u'PU')],
-    #             (u'\u5e93\u514b', u'\u4e5f', u'\u6ca1\u6709', u'\u4f4e\u4f30', u'\u82f9\u679c', u'\u7684', u'\u672a\u6765')],
-    #             [[(u'\u9c8d\u5c14\u9ed8', u'NR'), (u'\u9000\u4f11', u'VV'), (u'\u6d88\u606f', u'NN'), (u'\u523a\u6fc0', u'VV'),
-    #              (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\u53d7', u'LB'),
-    #              (u'\u9c8d\u5c14', u'NR'), (u'\u9ed8', u'NT'), (u'\u4e00', u'CD'), (u'\u5e74', u'M'), (u'\u5185', u'LC'),
-    #              (u'\u5c06', u'BA'), (u'\u9000\u4f11', u'VV'), (u'\u7684', u'DEC'), (u'\u6d88\u606f', u'NN'),
-    #              (u'\u523a\u6fc0', u'NN'), (u'\uff0c', u'PU'), (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'),
-    #              (u'\u5468\u4e94', u'NT'), (u'\u5927', u'AD'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\uff0c', u'PU'),
-    #              (u'\u62a5', u'VV'), (u'\u6536\u4e8e', u'VV'), (u'34.75', u'CD'), (u'\u7f8e\u5143', u'M'), (u'\u3002', u'PU')],
-    #             (u'\u5fae\u8f6f', u'\u80a1\u4ef7', u'\u6da8', u'7.29%', u'\u53d7', u'\u9c8d\u5c14', u'\u9ed8', u'\u4e00',
-    #              u'\u5e74', u'\u5185', u'\u5c06', u'\u9000\u4f11', u'\u7684', u'\u6d88\u606f', u'\u523a\u6fc0')]]
+    data_ = [[[(u'Apple', u'NR'), (u'Watch', u'NN'), (u'\u53d1\u5e03', u'VV'), (u'\u540e', u'LC'), (u'\u82f9\u679c', u'NN'), (u'\u5c06', u'AD'), (u'\u5b8c\u5168', u'AD'), (u'\u4e0d\u540c', u'JJ'), (u'BI', u'NN'), (u'\u4e2d\u6587', u'NN'), (u'\u7ad9', u'VV'), (u'3\u6708', u'NT'), (u'7\u65e5', u'NT'), (u'\u62a5\u9053', u'VV'), (u'\u667a\u80fd', u'NN'), (u'\u624b\u8868', u'NN'), (u'Apple', u'NN'), (u'Watch', u'NN'), (u'\u4ee3\u8868', u'VV'), (u'\u7740', u'AS'), (u'2007\u5e74', u'NT'), (u'\u82f9\u679c', u'NN'), (u'\u63a8\u51fa', u'VV'), (u'\u667a\u80fd', u'NN'), (u'\u624b\u673a', u'NN'), (u'iPhone', u'NN'), (u'\u4ee5\u6765', u'LC'), (u'\u6700\u5927', u'JJ'), (u'\u8d4c\u6ce8', u'NN'), (u'\uff0c', u'PU'), (u'\u4e00\u65e6', u'CS'), (u'\u82f9\u679c', u'NN'), (u'\u4e8e', u'P'), (u'3\u6708', u'NT'), (u'9\u65e5', u'NT'), (u'\u6b63\u5f0f', u'AD'), (u'\u516c\u5e03', u'VV'), (u'Apple', u'NN'), (u'Watch', u'NN'), (u'\u7684', u'DEG'), (u'\u5b9a\u4ef7', u'NN'), (u'\u7b49', u'ETC'), (u'\u7ec6\u8282', u'NN'), (u'\u540e', u'LC'), (u'\uff0c', u'PU'), (u'\u82f9\u679c', u'NN'), (u'\u5c06', u'AD'), (u'\u53d8\u6210', u'VV'), (u'\u5b8c\u5168', u'AD'), (u'\u4e0d\u540c', u'VA'), (u'\u7684', u'DEC'), (u'\u516c\u53f8', u'NN'), (u'\u3002', u'PU')],
+            (u'Apple', u'Watch', u'\u53d1\u5e03', u'\u540e', u'\u82f9\u679c', u'\u5c06', u'\u5b8c\u5168', u'\u4e0d\u540c', u'BI', u'\u4e2d\u6587', u'\u7ad9', u'3\u6708', u'7\u65e5', u'\u62a5\u9053', u'\u667a\u80fd', u'\u624b\u8868', u'Apple', u'Watch', u'\u4ee3\u8868', u'\u7740', u'2007\u5e74', u'\u82f9\u679c', u'\u63a8\u51fa', u'\u667a\u80fd', u'\u624b\u673a', u'iPhone', u'\u4ee5\u6765', u'\u6700\u5927', u'\u8d4c\u6ce8')],
+            [[(u'\u4ee5\u4e0b', u'AD'), (u'\u56db', u'CD'), (u'\u5927', u'JJ'), (u'\u56e0\u7d20', u'NN'),
+            (u'\u4e5f', u'AD'), (u'\u8868\u660e', u'VV'), (u'\u5e93\u514b', u'NR'), (u'\u4ecd', u'AD'),
+             (u'\u662f', u'VC'), (u'\u5f15\u9886', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u8d70\u5411', u'VV'),
+             (u'\u672a\u6765', u'NT'), (u'\u7684', u'DEG'), (u'\u5408\u9002', u'JJ'), (u'\u4eba\u9009', u'NN'),
+             (u'\u3002', u'PU')],
+                (u'\u5e93\u514b', u'\u4ecd', u'\u662f', u'\u5f15\u9886', u'\u82f9\u679c', u'\u8d70\u5411',
+                 u'\u672a\u6765', u'\u7684', u'\u5408\u9002', u'\u4eba\u9009')],
+                [[(u'\u5f53\u7136', u'AD'), (u'\uff0c', u'PU'), (u'\u5e93\u514b', u'NR'), (u'\u4e5f', u'AD'),
+                 (u'\u6ca1\u6709', u'AD'), (u'\u4f4e\u4f30', u'VV'), (u'\u82f9\u679c', u'NN'), (u'\u7684', u'DEC'),
+                 (u'\u672a\u6765', u'NT'), (u'\u3002', u'PU')],
+                (u'\u5e93\u514b', u'\u4e5f', u'\u6ca1\u6709', u'\u4f4e\u4f30', u'\u82f9\u679c', u'\u7684', u'\u672a\u6765')],
+                [[(u'\u9c8d\u5c14\u9ed8', u'NR'), (u'\u9000\u4f11', u'VV'), (u'\u6d88\u606f', u'NN'), (u'\u523a\u6fc0', u'VV'),
+                 (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\u53d7', u'LB'),
+                 (u'\u9c8d\u5c14', u'NR'), (u'\u9ed8', u'NT'), (u'\u4e00', u'CD'), (u'\u5e74', u'M'), (u'\u5185', u'LC'),
+                 (u'\u5c06', u'BA'), (u'\u9000\u4f11', u'VV'), (u'\u7684', u'DEC'), (u'\u6d88\u606f', u'NN'),
+                 (u'\u523a\u6fc0', u'NN'), (u'\uff0c', u'PU'), (u'\u5fae\u8f6f', u'NR'), (u'\u80a1\u4ef7', u'NN'),
+                 (u'\u5468\u4e94', u'NT'), (u'\u5927', u'AD'), (u'\u6da8', u'VV'), (u'7.29%', u'CD'), (u'\uff0c', u'PU'),
+                 (u'\u62a5', u'VV'), (u'\u6536\u4e8e', u'VV'), (u'34.75', u'CD'), (u'\u7f8e\u5143', u'M'), (u'\u3002', u'PU')],
+                (u'\u5fae\u8f6f', u'\u80a1\u4ef7', u'\u6da8', u'7.29%', u'\u53d7', u'\u9c8d\u5c14', u'\u9ed8', u'\u4e00',
+                 u'\u5e74', u'\u5185', u'\u5c06', u'\u9000\u4f11', u'\u7684', u'\u6d88\u606f', u'\u523a\u6fc0')]]
+    # test_(data_)
 
     data = read_pickle('/Users/acepor/work/time/data/events_result.pkl')
-    test(data, '/Users/acepor/work/time/data/output_full2.txt')
+    test(data, '/Users/acepor/work/time/data/output_full7.txt')
+
